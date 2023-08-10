@@ -1,0 +1,8 @@
+package: handler
+generate:
+  gin-server: true
+  embedded-spec: true
+additional-imports:
+  - package: github.com/devsapp/serverless-stable-diffusion-api/pkg/models
+    alias: .
+output: pkg/handler/interface.go

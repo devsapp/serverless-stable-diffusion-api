@@ -1,0 +1,4 @@
+package: module
+generate:
+  models: true
+output: pkg/models/proxy.go

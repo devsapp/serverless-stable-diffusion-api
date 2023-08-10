@@ -15,7 +15,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ModelBase'
+              $ref: '#/components/schemas/Model'
       responses:
         '200':
           description: upload model response
@@ -36,7 +36,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Model'
+                  $ref: '#/components/schemas/ModelAttributes'
         default:
           description: unexpected error
           content:
@@ -106,7 +106,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Model'
+                $ref: '#/components/schemas/ModelAttributes'
         default:
           description: unexpected error
           content:
@@ -249,7 +249,7 @@ paths:
 
 components:
   schemas:
-    ModelBase:
+    Model:
       required:
         - type
         - name
@@ -264,9 +264,9 @@ components:
         ossPath:
           type: string
           description: the oss path of the model
-    Model:
+    ModelAttributes:
       allOf:
-        - $ref: "#/components/schemas/ModelBase"
+        - $ref: "#/components/schemas/Model"
         - required:
             - etag
             - status
