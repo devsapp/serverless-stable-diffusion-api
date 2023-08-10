@@ -1,0 +1,5 @@
+package: api
+generate:
+  gin-server: true
+  embedded-spec: true
+output: proxy_interface.go
