@@ -6,11 +6,10 @@ info:
 paths:
   /models:
     post:
-      summary: upload model
-      description: prompt to image
-      operationId: uploadModel
+      summary: register model
+      operationId: registerModel
       requestBody:
-        description: model indo
+        description: model details
         required: true
         content:
           application/json:
@@ -18,7 +17,7 @@ paths:
               $ref: '#/components/schemas/Model'
       responses:
         '200':
-          description: upload model response
+          description: register model response
         default:
           description: unexpected error
           content:
@@ -27,7 +26,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     get:
       summary: list model
-      operationId: listModel
+      operationId: listModels
       responses:
         '200':
           description: list model all
@@ -56,7 +55,7 @@ paths:
           schema:
             type: string
       requestBody:
-        description: model indo
+        description: model detail
         required: true
         content:
           application/json:
@@ -64,7 +63,7 @@ paths:
               $ref: '#/components/schemas/Model'
       responses:
         '200':
-          description: update success
+          description: update model success
         default:
           description: unexpected error
           content:
@@ -83,7 +82,7 @@ paths:
            type: string
       responses:
        '200':
-         description: update success
+         description: delete model success
        default:
          description: unexpected error
          content:
@@ -118,6 +117,7 @@ paths:
       summary: txt to img predict
       operationId: txt2Img
       requestBody:
+        description: predict params
         required: true
         content:
           application/json:
@@ -141,6 +141,7 @@ paths:
       summary: img to img predict
       operationId: img2Img
       requestBody:
+        description: predict params
         required: true
         content:
           application/json:
@@ -159,12 +160,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /progress:
+  /tasks/{taskId}/progress:
     get:
       summary: get predict progress
       parameters:
         - name: taskId
-          in: query
+          in: path
           description: task id
           required: true
           schema:
@@ -175,19 +176,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProgressRespons'
+                $ref: '#/components/schemas/TaskProgressResponse'
         default:
           description: unexpected error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /cancel:
+  /tasks/{taskId}/cancellation:
     get:
       summary: cancel predict task
       parameters:
         - name: taskId
-          in: query
+          in: path
           description: task id
           required: true
           schema:
@@ -201,12 +202,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /getResult:
+  /tasks/{taskId}/result:
     get:
-      summary: get predict progress
+      summary: get predict result
       parameters:
         - name: taskId
-          in: query
+          in: path
           description: task id
           required: true
           schema:
@@ -217,29 +218,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ImageResponse'
-        default:
-          description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /getResults:
-    post:
-      summary: get batch result
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GetImagesRequest'
-      responses:
-        '200':
-          description: get predict result success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ImageResponse'
+                $ref: '#/components/schemas/TaskResultResponse'
         default:
           description: unexpected error
           content:
@@ -422,7 +401,7 @@ components:
           type: string
         status:
           type: string
-        err_msg:
+        message:
           type: string
     Img2ImgRequest:
       required:
@@ -571,9 +550,9 @@ components:
           type: string
         status:
           type: string
-        err_msg:
+        message:
           type: string
-    ProgressRespons:
+    TaskProgressResponse:
       required:
         - taskId
         - progress
@@ -585,16 +564,17 @@ components:
         progress:
           type: number
           format: float
-        eatRelative:
+        etaRelative:
           type: number
           format: float
         state:
           type: object
         currentImage:
           type: string
-        status:
+        message:
           type: string
-    Image:
+    TaskResult:
+      description:  one task result, include taskId/images/parameters/info
       required:
         - taskId
         - images
@@ -606,29 +586,21 @@ components:
           items:
             type: string
         parameters:
+          description: task predict params
           type: object
         info:
+          description: task predict info
           type: object
-    ImageResponse:
+    TaskResultResponse:
       required:
         - data
-        - status
       properties:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/Image'
-        errMsg:
+            $ref: '#/components/schemas/TaskResult'
+        message:
           type: string
-
-    GetImagesRequest:
-      required:
-        - taskId
-      properties:
-        taskId:
-          type: array
-          items:
-            type: string
     Error:
       required:
         - code
