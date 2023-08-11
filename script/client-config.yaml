@@ -1,5 +1,8 @@
 package: client
 generate:
   client: true
-  models: true
-output: pkg/client/client_gen.go
+#  models: true
+additional-imports:
+  - package: github.com/devsapp/serverless-stable-diffusion-api/pkg/models
+    alias: .
+output: pkg/client/client.go

@@ -129,7 +129,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Txt2ImgResultResponse'
+                $ref: '#/components/schemas/SubmitTaskResponse'
         default:
           description: unexpected error
           content:
@@ -153,7 +153,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Img2ImgResultResponse'
+                $ref: '#/components/schemas/SubmitTaskResponse'
         default:
           description: unexpected error
           content:
@@ -185,7 +185,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
   /tasks/{taskId}/cancellation:
-    get:
+    post:
       summary: cancel predict task
       operationId: cancelTask
       parameters:
@@ -395,17 +395,6 @@ components:
           type: boolean
         alwayson_scripts:
           type: object
-    Txt2ImgResultResponse:
-      required:
-        - taskId
-        - status
-      properties:
-        taskId:
-          type: string
-        status:
-          type: string
-        message:
-          type: string
     Img2ImgRequest:
       required:
         - stable_diffusion_model
@@ -544,7 +533,7 @@ components:
           type: boolean
         alwayson_scripts:
           type: object
-    Img2ImgResultResponse:
+    SubmitTaskResponse:
       required:
         - taskId
         - status
