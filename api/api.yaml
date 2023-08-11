@@ -163,6 +163,7 @@ paths:
   /tasks/{taskId}/progress:
     get:
       summary: get predict progress
+      operationId: getTaskProgress
       parameters:
         - name: taskId
           in: path
@@ -186,6 +187,7 @@ paths:
   /tasks/{taskId}/cancellation:
     get:
       summary: cancel predict task
+      operationId: cancelTask
       parameters:
         - name: taskId
           in: path
@@ -205,6 +207,7 @@ paths:
   /tasks/{taskId}/result:
     get:
       summary: get predict result
+      operationId: getTaskResult
       parameters:
         - name: taskId
           in: path
