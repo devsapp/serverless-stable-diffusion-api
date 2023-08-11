@@ -582,6 +582,7 @@ components:
         taskId:
           type: string
         images:
+          description: one task image result, len(images)>1 when batch count or batch size > 1
           type: array
           items:
             type: string
