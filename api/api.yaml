@@ -573,7 +573,7 @@ components:
           type: string
         message:
           type: string
-    TaskResult:
+    TaskResultResponse:
       description:  one task result, include taskId/images/parameters/info
       required:
         - taskId
@@ -592,14 +592,6 @@ components:
         info:
           description: task predict info
           type: object
-    TaskResultResponse:
-      required:
-        - data
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/TaskResult'
         message:
           type: string
     Error:
