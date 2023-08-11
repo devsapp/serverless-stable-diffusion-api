@@ -129,7 +129,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Txt2ImgResponse'
+                $ref: '#/components/schemas/Txt2ImgResultResponse'
         default:
           description: unexpected error
           content:
@@ -153,7 +153,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Img2ImgResponse'
+                $ref: '#/components/schemas/Img2ImgResultResponse'
         default:
           description: unexpected error
           content:
@@ -395,7 +395,7 @@ components:
           type: boolean
         alwayson_scripts:
           type: object
-    Txt2ImgResponse:
+    Txt2ImgResultResponse:
       required:
         - taskId
         - status
@@ -544,7 +544,7 @@ components:
           type: boolean
         alwayson_scripts:
           type: object
-    Img2ImgResponse:
+    Img2ImgResultResponse:
       required:
         - taskId
         - status
