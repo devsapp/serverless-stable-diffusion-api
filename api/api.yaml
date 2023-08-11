@@ -1,0 +1,600 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Swagger predict
+  description: serverless-stable-diffusion-webui predict API
+paths:
+  /models:
+    post:
+      summary: register model
+      operationId: registerModel
+      requestBody:
+        description: model details
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Model'
+      responses:
+        '200':
+          description: register model response
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: list model
+      operationId: listModels
+      responses:
+        '200':
+          description: list model all
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ModelAttributes'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /models/{model_name}:
+    put:
+      summary: update model
+      description: update model
+      operationId: updateModel
+      parameters:
+        - name: model_name
+          in: path
+          description: name of model
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: model detail
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Model'
+      responses:
+        '200':
+          description: update model success
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: delete model
+      operationId: deleteModel
+      parameters:
+       - name: model_name
+         in: path
+         description: name of model
+         required: true
+         schema:
+           type: string
+      responses:
+       '200':
+         description: delete model success
+       default:
+         description: unexpected error
+         content:
+           application/json:
+             schema:
+               $ref: '#/components/schemas/Error'
+    get:
+      summary: get model info
+      operationId: getModel
+      parameters:
+        - name: model_name
+          in: path
+          description: name of model
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: get model success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelAttributes'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /txt2img:
+    post:
+      summary: txt to img predict
+      operationId: txt2Img
+      requestBody:
+        description: predict params
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Txt2ImgRequest'
+      responses:
+        '200':
+          description: submit predict success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitTaskResponse'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /img2img:
+    post:
+      summary: img to img predict
+      operationId: img2Img
+      requestBody:
+        description: predict params
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Img2ImgRequest'
+      responses:
+        '200':
+          description: submit predict success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitTaskResponse'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /tasks/{taskId}/progress:
+    get:
+      summary: get predict progress
+      operationId: getTaskProgress
+      parameters:
+        - name: taskId
+          in: path
+          description: task id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: get predict progress success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskProgressResponse'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /tasks/{taskId}/cancellation:
+    post:
+      summary: cancel predict task
+      operationId: cancelTask
+      parameters:
+        - name: taskId
+          in: path
+          description: task id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: cancel predict progress success
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /tasks/{taskId}/result:
+    get:
+      summary: get predict result
+      operationId: getTaskResult
+      parameters:
+        - name: taskId
+          in: path
+          description: task id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: get predict result success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResultResponse'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Model:
+      required:
+        - type
+        - name
+        - ossPath
+      properties:
+        type:
+          type: string
+          description: model type
+        name:
+          type: string
+          description: model name
+        ossPath:
+          type: string
+          description: the oss path of the model
+    ModelAttributes:
+      allOf:
+        - $ref: "#/components/schemas/Model"
+        - required:
+            - etag
+            - status
+          properties:
+            etag:
+              type: string
+              description: the oss etag of the model
+            status:
+              type: string
+              description: the model status, registering, loading, loaded or unloaded
+            registeredTime:
+              type: string
+              description: the registered time of the model
+            lastModificationTime:
+              type: string
+              description: the last modification time of the model
+    Txt2ImgRequest:
+      required:
+        - stable_diffusion_model
+        - sd_vae
+        - prompt
+      properties:
+        stable_diffusion_model:
+          type: string
+        sd_vae:
+          type: string
+        save_dir:
+          type: string
+        enable_hr:
+          type: boolean
+        denoising_strength:
+          type: number
+          format: float
+        firstphase_width:
+          type: integer
+          format: int32
+        firstphase_height:
+          type: integer
+          format: int32
+        hr_scale:
+          type: integer
+          format: int32
+        hr_upscaler:
+          type: string
+        hr_second_pass_steps:
+          type: integer
+          format: int32
+        hr_resize_x:
+          type: integer
+          format: int32
+        hr_resize_y:
+          type: integer
+          format: int32
+        hr_sampler_name:
+          type: string
+        hr_prompt:
+          type: string
+        hr_negative_prompt:
+          type: string
+        prompt:
+          type: string
+        styles:
+          type: array
+          items:
+            type: string
+        seed:
+          type: integer
+          format: int32
+        subseed:
+          type: integer
+          format: int32
+        subseed_strength:
+          type: integer
+          format: int32
+        seed_resize_from_h:
+          type: integer
+          format: int32
+        seed_resize_from_w:
+          type: integer
+          format: int32
+        sampler_name:
+          type: string
+        batch_size:
+          type: integer
+          format: int32
+        n_iter:
+          type: integer
+          format: int32
+        steps:
+          type: integer
+          format: int32
+        cfg_scale:
+          type: integer
+          format: int32
+        width:
+          type: integer
+          format: int32
+        height:
+          type: integer
+          format: int32
+        restore_faces:
+          type: boolean
+        tiling:
+          type: boolean
+        do_not_save_samples:
+          type: boolean
+        do_not_save_grid:
+          type: boolean
+        negative_prompt:
+          type: string
+        eta:
+          type: integer
+          format: int32
+        s_min_uncond:
+          type: integer
+          format: int32
+        s_churn:
+          type: integer
+          format: int32
+        s_tmax:
+          type: integer
+          format: int32
+        s_tmin:
+          type: integer
+          format: int32
+        s_noise:
+          type: integer
+          format: int32
+        override_settings:
+          type: object
+        override_settings_restore_afterwards:
+          type: boolean
+        script_args:
+          type: array
+          items:
+            type: object
+        sampler_index:
+          type: string
+        script_name:
+          type: string
+        send_images:
+          type: boolean
+        save_images:
+          type: boolean
+        alwayson_scripts:
+          type: object
+    Img2ImgRequest:
+      required:
+        - stable_diffusion_model
+        - sd_vae
+      properties:
+        stable_diffusion_model:
+          type: string
+        sd_vae:
+          type: string
+        save_dir:
+          type: string
+        init_images:
+          type: array
+          items:
+            type: string
+        resize_mode:
+          type: integer
+          format: int32
+        denoising_strength:
+          type: number
+          format: float
+        image_cfg_scale:
+          type: integer
+          format: int32
+        mask:
+          type: string
+        mask_blur:
+          type: integer
+          format: int32
+        mask_blur_x:
+          type: integer
+          format: int32
+        mask_blur_y:
+          type: integer
+          format: int32
+        inpainting_fill:
+          type: integer
+          format: int32
+        inpaint_full_res:
+          type: boolean
+        inpaint_full_res_padding:
+          type: integer
+          format: int32
+        inpainting_mask_invert:
+          type: integer
+          format: int32
+        initial_noise_multiplier:
+          type: integer
+          format: int32
+        prompt:
+          type: string
+        styles:
+          type: array
+          items:
+            type: string
+        seed:
+          type: integer
+          format: int32
+        subseed:
+          type: integer
+          format: int32
+        subseed_strength:
+          type: integer
+          format: int32
+        seed_resize_from_h:
+          type: integer
+          format: int32
+        seed_resize_from_w:
+          type: integer
+          format: int32
+        sampler_name:
+          type: string
+        batch_size:
+          type: integer
+          format: int32
+        n_iter:
+          type: integer
+          format: int32
+        steps:
+          type: integer
+          format: int32
+        cfg_scale:
+          type: integer
+          format: int32
+        width:
+          type: integer
+          format: int32
+        height:
+          type: integer
+          format: int32
+        restore_faces:
+          type: boolean
+        tiling:
+          type: boolean
+        do_not_save_samples:
+          type: boolean
+        do_not_save_grid:
+          type: boolean
+        negative_prompt:
+          type: string
+        eta:
+          type: integer
+          format: int32
+        s_min_uncond:
+          type: integer
+          format: int32
+        s_churn:
+          type: integer
+          format: int32
+        s_tmax:
+          type: integer
+          format: int32
+        s_tmin:
+          type: integer
+          format: int32
+        s_noise:
+          type: integer
+          format: int32
+        override_settings:
+          type: object
+        override_settings_restore_afterwards:
+          type: boolean
+        script_args:
+          type: array
+          items:
+            type: string
+        sampler_index:
+          type: string
+        include_init_images:
+          type: boolean
+        script_name:
+          type: string
+        send_images:
+          type: boolean
+        save_images:
+          type: boolean
+        alwayson_scripts:
+          type: object
+    SubmitTaskResponse:
+      required:
+        - taskId
+        - status
+      properties:
+        taskId:
+          type: string
+        status:
+          type: string
+        message:
+          type: string
+    TaskProgressResponse:
+      required:
+        - taskId
+        - progress
+        - etaRelative
+        - currentImage
+      properties:
+        taskId:
+          type: string
+        progress:
+          type: number
+          format: float
+        etaRelative:
+          type: number
+          format: float
+        state:
+          type: object
+        currentImage:
+          type: string
+        message:
+          type: string
+    TaskResultResponse:
+      description:  one task result, include taskId/images/parameters/info
+      required:
+        - taskId
+        - images
+      properties:
+        taskId:
+          type: string
+        images:
+          description: one task image result, len(images)>1 when batch count or batch size > 1
+          type: array
+          items:
+            type: string
+        parameters:
+          description: task predict params
+          type: object
+        info:
+          description: task predict info
+          type: object
+        message:
+          type: string
+    Error:
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: Error code
+        message:
+          type: string
+          description: Error message
