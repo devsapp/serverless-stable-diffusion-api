@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -11,16 +10,10 @@ const (
 )
 
 type ProxyHandler struct {
-	taskStore  datastore.TaskInterface
-	modelStore datastore.ModelInterface
 }
 
-func NewProxyHandler(taskStore datastore.TaskInterface,
-	modelStore datastore.ModelInterface) *ProxyHandler {
-	return &ProxyHandler{
-		taskStore:  taskStore,
-		modelStore: modelStore,
-	}
+func NewProxyHandler() *ProxyHandler {
+	return &ProxyHandler{}
 }
 
 // CancelTask predict task

@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
-	"github.com/devsapp/serverless-stable-diffusion-api/pkg/function"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/handler"
 	"github.com/gin-gonic/gin"
 	"log"
@@ -18,22 +17,22 @@ type ProxyServer struct {
 
 func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, error) {
 
-	// init task table
-	taskDataStore, err := datastore.NewTaskDataStore(dbType)
-	if err != nil {
-		log.Println("taskDataStore init fail")
-		return nil, err
-	}
-	// init model table
-	modelDataStore, err := datastore.NewModelDataStore(dbType)
-	if err != nil {
-		log.Println("modelDataStore init fail")
-		return nil, err
-	}
-	// init func manager
-	function.NewFuncManager(dbType)
+	//// init task table
+	//taskDataStore, err := datastore.NewTaskDataStore(dbType)
+	//if err != nil {
+	//	log.Println("taskDataStore init fail")
+	//	return nil, err
+	//}
+	//// init model table
+	//modelDataStore, err := datastore.NewModelDataStore(dbType)
+	//if err != nil {
+	//	log.Println("modelDataStore init fail")
+	//	return nil, err
+	//}
+	//// init func manager
+	//function.NewFuncManager(dbType)
 	// init handler
-	proxyHandler := handler.NewProxyHandler(taskDataStore, modelDataStore)
+	proxyHandler := handler.NewProxyHandler()
 
 	// init router
 	router := gin.New()
