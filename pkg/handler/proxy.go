@@ -30,7 +30,7 @@ func (p *ProxyHandler) CancelTask(c *gin.Context, taskId string) {
 }
 
 // GetTaskResult GetGetResult get predict progress
-// (GET /getResult)
+// (GET /tasks/{taskId}/result)
 func (p *ProxyHandler) GetTaskResult(c *gin.Context, taskId string) {
 	c.JSON(http.StatusOK, gin.H{})
 }
@@ -75,7 +75,7 @@ func (p *ProxyHandler) UpdateModel(c *gin.Context, modelName string) {
 }
 
 // GetTaskProgress get predict progress
-// (GET /progress)
+// (GET /tasks/{taskId}/progress)
 func (p *ProxyHandler) GetTaskProgress(c *gin.Context, taskId string) {
 	c.JSON(http.StatusOK, gin.H{})
 
