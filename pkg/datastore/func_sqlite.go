@@ -32,12 +32,12 @@ func NewFunc(dbType DatastoreType) (*FuncSqlite, error) {
 	return t, nil
 }
 
-func (f *FuncSqlite) Put(key string, data map[string]string) error {
+func (f *FuncSqlite) Put(key string, data map[string]interface{}) error {
 	return nil
 }
-func (f *FuncSqlite) Get(key string, fields []string) (map[string]string, error) {
+func (f *FuncSqlite) Get(key string, fields []string) (map[string]interface{}, error) {
 	return nil, nil
 }
-func (f *FuncSqlite) ListAll(fields []string) ([]map[string]string, error) {
+func (f *FuncSqlite) ListAll(fields []string) ([]map[string]interface{}, error) {
 	return nil, nil
 }

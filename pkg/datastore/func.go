@@ -1,5 +1,7 @@
 package datastore
 
+import "log"
+
 const (
 	KFuncTableName  = "FUNCTION"
 	KFuncKey        = "PRIMARY_KEY"
@@ -16,10 +18,12 @@ type FuncInterface interface {
 	ListAll(fields []string) ([]map[string]interface{}, error)
 }
 
-func NewFuncDataStore(dbType DatastoreType) FuncInterface {
+func NewFuncDataStore(dbType DatastoreType) (FuncInterface, error) {
 	switch dbType {
 	case SQLite:
-
+		return NewFunc(dbType)
+	default:
+		log.Fatalf("dbType %s not support", dbType)
 	}
-	return nil
+	return nil, nil
 }
