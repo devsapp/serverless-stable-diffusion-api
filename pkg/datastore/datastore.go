@@ -1,11 +1,11 @@
 package datastore
 
-type DatastoreType int
+type DatastoreType string
 
 const (
-	SQLite DatastoreType = iota
-	MySQL
-	TableStore
+	SQLite     DatastoreType = "sqlite"
+	MySQL      DatastoreType = "mysql"
+	TableStore DatastoreType = "tableStore"
 )
 
 type Config struct {
