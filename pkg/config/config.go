@@ -7,7 +7,7 @@ type Config struct {
 	Image           string
 	AccessKeyId     string
 	AccessKeySecret string
-	OtsEndPoint     string
+	OtsEndpoint     string
 
 	//db
 	DbSqlite string
