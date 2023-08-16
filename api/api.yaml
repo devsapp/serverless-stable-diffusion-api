@@ -1,8 +1,8 @@
 openapi: "3.0.0"
 info:
   version: 1.0.0
-  title: Swagger predict
-  description: serverless-stable-diffusion-webui predict API
+  title: Serverless Stable Diffusion Inference
+  description: This is the serverless stable diffusion inference API.
 paths:
   /models:
     post:
@@ -14,34 +14,34 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Model'
+              $ref: "#/components/schemas/Model"
       responses:
-        '200':
+        "200":
           description: register model response
         default:
           description: unexpected error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
     get:
       summary: list model
       operationId: listModels
       responses:
-        '200':
+        "200":
           description: list model all
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ModelAttributes'
+                  $ref: "#/components/schemas/ModelAttributes"
         default:
           description: unexpected error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
   /models/{model_name}:
     put:
       summary: update model
@@ -54,41 +54,43 @@ paths:
           required: true
           schema:
             type: string
+            example: "example_model_name"
       requestBody:
         description: model detail
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Model'
+              $ref: "#/components/schemas/Model"
       responses:
-        '200':
+        "200":
           description: update model success
         default:
           description: unexpected error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
     delete:
       summary: delete model
       operationId: deleteModel
       parameters:
-       - name: model_name
-         in: path
-         description: name of model
-         required: true
-         schema:
-           type: string
+        - name: model_name
+          in: path
+          description: name of model
+          required: true
+          schema:
+            type: string
+            example: "example_model_name_to_delete"
       responses:
-       '200':
-         description: delete model success
-       default:
-         description: unexpected error
-         content:
-           application/json:
-             schema:
-               $ref: '#/components/schemas/Error'
+        "200":
+          description: delete model success
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     get:
       summary: get model info
       operationId: getModel
@@ -99,19 +101,20 @@ paths:
           required: true
           schema:
             type: string
+            example: "example_model_name_for_info"
       responses:
-        '200':
+        "200":
           description: get model success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ModelAttributes'
+                $ref: "#/components/schemas/ModelAttributes"
         default:
           description: unexpected error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
   /txt2img:
     post:
       summary: txt to img predict
@@ -122,20 +125,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Txt2ImgRequest'
+              $ref: "#/components/schemas/Txt2ImgRequest"
       responses:
-        '200':
+        "200":
           description: submit predict success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmitTaskResponse'
+                $ref: "#/components/schemas/SubmitTaskResponse"
         default:
           description: unexpected error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
   /img2img:
     post:
       summary: img to img predict
@@ -146,20 +149,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Img2ImgRequest'
+              $ref: "#/components/schemas/Img2ImgRequest"
       responses:
-        '200':
+        "200":
           description: submit predict success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmitTaskResponse'
+                $ref: "#/components/schemas/SubmitTaskResponse"
         default:
           description: unexpected error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
   /tasks/{taskId}/progress:
     get:
       summary: get predict progress
@@ -171,19 +174,20 @@ paths:
           required: true
           schema:
             type: string
+            example: "example_task_id_for_progress"
       responses:
-        '200':
+        "200":
           description: get predict progress success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TaskProgressResponse'
+                $ref: "#/components/schemas/TaskProgressResponse"
         default:
           description: unexpected error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
   /tasks/{taskId}/cancellation:
     post:
       summary: cancel predict task
@@ -195,15 +199,16 @@ paths:
           required: true
           schema:
             type: string
+            example: "example_task_id_to_cancel"
       responses:
-        '200':
+        "200":
           description: cancel predict progress success
         default:
           description: unexpected error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
   /tasks/{taskId}/result:
     get:
       summary: get predict result
@@ -215,19 +220,20 @@ paths:
           required: true
           schema:
             type: string
+            example: "example_task_id_for_result"
       responses:
-        '200':
+        "200":
           description: get predict result success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TaskResultResponse'
+                $ref: "#/components/schemas/TaskResultResponse"
         default:
           description: unexpected error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
 
 components:
   schemas:
@@ -240,12 +246,15 @@ components:
         type:
           type: string
           description: model type
+          example: "diffusion"
         name:
           type: string
           description: model name
+          example: "model_v1"
         ossPath:
           type: string
           description: the oss path of the model
+          example: "/path/to/oss/model_v1"
     ModelAttributes:
       allOf:
         - $ref: "#/components/schemas/Model"
@@ -256,15 +265,19 @@ components:
             etag:
               type: string
               description: the oss etag of the model
+              example: "3f786850e387550fdab836ed7e6dc881de23001b"
             status:
               type: string
               description: the model status, registering, loading, loaded or unloaded
+              example: "loaded"
             registeredTime:
               type: string
               description: the registered time of the model
+              example: "2023-01-01T12:00:00Z"
             lastModificationTime:
               type: string
               description: the last modification time of the model
+              example: "2023-01-10T12:00:00Z"
     Txt2ImgRequest:
       required:
         - stable_diffusion_model
@@ -273,128 +286,176 @@ components:
       properties:
         stable_diffusion_model:
           type: string
+          example: "diffusion_v1"
         sd_vae:
           type: string
+          example: "vae_v1"
         save_dir:
           type: string
+          example: "/path/to/save_dir"
         enable_hr:
           type: boolean
+          example: true
         denoising_strength:
           type: number
           format: float
+          example: 0.5
         firstphase_width:
           type: integer
           format: int32
+          example: 640
         firstphase_height:
           type: integer
           format: int32
+          example: 480
         hr_scale:
           type: integer
           format: int32
+          example: 2
         hr_upscaler:
           type: string
+          example: "upscale_method_v1"
         hr_second_pass_steps:
           type: integer
           format: int32
+          example: 10
         hr_resize_x:
           type: integer
           format: int32
+          example: 1280
         hr_resize_y:
           type: integer
           format: int32
+          example: 960
         hr_sampler_name:
           type: string
+          example: "sampler_v1"
         hr_prompt:
           type: string
+          example: "High resolution prompt"
         hr_negative_prompt:
           type: string
+          example: "Negative high resolution prompt"
         prompt:
           type: string
+          example: "Mountain landscape during sunset"
         styles:
           type: array
           items:
             type: string
+          example: ["style1", "style2"]
         seed:
           type: integer
           format: int32
+          example: 123456
         subseed:
           type: integer
           format: int32
+          example: 789
         subseed_strength:
           type: integer
           format: int32
+          example: 5
         seed_resize_from_h:
           type: integer
           format: int32
+          example: 480
         seed_resize_from_w:
           type: integer
           format: int32
+          example: 640
         sampler_name:
           type: string
+          example: "sampler_v2"
         batch_size:
           type: integer
           format: int32
+          example: 32
         n_iter:
           type: integer
           format: int32
+          example: 1000
         steps:
           type: integer
           format: int32
+          example: 100
         cfg_scale:
           type: integer
           format: int32
+          example: 1
         width:
           type: integer
           format: int32
+          example: 640
         height:
           type: integer
           format: int32
+          example: 480
         restore_faces:
           type: boolean
+          example: true
         tiling:
           type: boolean
+          example: false
         do_not_save_samples:
           type: boolean
+          example: false
         do_not_save_grid:
           type: boolean
+          example: false
         negative_prompt:
           type: string
+          example: "Avoid mountains"
         eta:
           type: integer
           format: int32
+          example: 5
         s_min_uncond:
           type: integer
           format: int32
+          example: 1
         s_churn:
           type: integer
           format: int32
+          example: 3
         s_tmax:
           type: integer
           format: int32
+          example: 10
         s_tmin:
           type: integer
           format: int32
+          example: 1
         s_noise:
           type: integer
           format: int32
+          example: 2
         override_settings:
           type: object
+          example: { "settingKey": "settingValue" }
         override_settings_restore_afterwards:
           type: boolean
+          example: true
         script_args:
           type: array
           items:
             type: object
+          example: [{ "argKey": "argValue" }]
         sampler_index:
           type: string
+          example: "index_v1"
         script_name:
           type: string
+          example: "script_v1"
         send_images:
           type: boolean
+          example: true
         save_images:
           type: boolean
+          example: true
         alwayson_scripts:
           type: object
+          example: { "scriptKey": "scriptValue" }
     Img2ImgRequest:
       required:
         - stable_diffusion_model
@@ -402,137 +463,188 @@ components:
       properties:
         stable_diffusion_model:
           type: string
+          example: "diffusion_v2"
         sd_vae:
           type: string
+          example: "vae_v2"
         save_dir:
           type: string
+          example: "/path/to/save_dir_v2"
         init_images:
           type: array
           items:
             type: string
+          example: ["image1_path", "image2_path"]
         resize_mode:
           type: integer
           format: int32
+          example: 1
         denoising_strength:
           type: number
           format: float
+          example: 0.8
         image_cfg_scale:
           type: integer
           format: int32
+          example: 2
         mask:
           type: string
+          example: "mask_path"
         mask_blur:
           type: integer
           format: int32
+          example: 3
         mask_blur_x:
           type: integer
           format: int32
+          example: 2
         mask_blur_y:
           type: integer
           format: int32
+          example: 2
         inpainting_fill:
           type: integer
           format: int32
+          example: 4
         inpaint_full_res:
           type: boolean
+          example: true
         inpaint_full_res_padding:
           type: integer
           format: int32
+          example: 2
         inpainting_mask_invert:
           type: integer
           format: int32
+          example: 0
         initial_noise_multiplier:
           type: integer
           format: int32
+          example: 5
         prompt:
           type: string
+          example: "Forest landscape"
         styles:
           type: array
           items:
             type: string
+          example: ["styleA", "styleB"]
         seed:
           type: integer
           format: int32
+          example: 654321
         subseed:
           type: integer
           format: int32
+          example: 987
         subseed_strength:
           type: integer
           format: int32
+          example: 6
         seed_resize_from_h:
           type: integer
           format: int32
+          example: 480
         seed_resize_from_w:
           type: integer
           format: int32
+          example: 640
         sampler_name:
           type: string
+          example: "sampler_v3"
         batch_size:
           type: integer
           format: int32
+          example: 64
         n_iter:
           type: integer
           format: int32
+          example: 500
         steps:
           type: integer
           format: int32
+          example: 50
         cfg_scale:
           type: integer
           format: int32
+          example: 2
         width:
           type: integer
           format: int32
+          example: 1280
         height:
           type: integer
           format: int32
+          example: 960
         restore_faces:
           type: boolean
+          example: false
         tiling:
           type: boolean
+          example: true
         do_not_save_samples:
           type: boolean
+          example: false
         do_not_save_grid:
           type: boolean
+          example: true
         negative_prompt:
           type: string
+          example: "Avoid forests"
         eta:
           type: integer
           format: int32
+          example: 6
         s_min_uncond:
           type: integer
           format: int32
+          example: 2
         s_churn:
           type: integer
           format: int32
+          example: 4
         s_tmax:
           type: integer
           format: int32
+          example: 11
         s_tmin:
           type: integer
           format: int32
+          example: 2
         s_noise:
           type: integer
           format: int32
+          example: 3
         override_settings:
           type: object
+          example: { "settingKeyV2": "settingValueV2" }
         override_settings_restore_afterwards:
           type: boolean
+          example: false
         script_args:
           type: array
           items:
             type: string
+          example: ["arg1", "arg2"]
         sampler_index:
           type: string
+          example: "index_v2"
         include_init_images:
           type: boolean
+          example: false
         script_name:
           type: string
+          example: "script_v2"
         send_images:
           type: boolean
+          example: false
         save_images:
           type: boolean
+          example: true
         alwayson_scripts:
           type: object
+          example: { "scriptKeyV2": "scriptValueV2" }
+
     SubmitTaskResponse:
       required:
         - taskId
@@ -540,10 +652,14 @@ components:
       properties:
         taskId:
           type: string
+          example: "task123456"
         status:
           type: string
+          example: "submitted"
         message:
           type: string
+          example: "Task has been successfully submitted."
+
     TaskProgressResponse:
       required:
         - taskId
@@ -553,39 +669,52 @@ components:
       properties:
         taskId:
           type: string
+          example: "task123456"
         progress:
           type: number
           format: float
+          example: 0.75
         etaRelative:
           type: number
           format: float
+          example: 0.25
         state:
           type: object
+          example: { "phase": "processing" }
         currentImage:
           type: string
+          example: "/path/to/current/image.jpg"
         message:
           type: string
+          example: "Processing image..."
+
     TaskResultResponse:
-      description:  one task result, include taskId/images/parameters/info
+      description: one task result, include taskId/images/parameters/info
       required:
         - taskId
         - images
       properties:
         taskId:
           type: string
+          example: "task123456"
         images:
           description: one task image result, len(images)>1 when batch count or batch size > 1
           type: array
           items:
             type: string
+          example: ["/path/to/image1.jpg", "/path/to/image2.jpg"]
         parameters:
           description: task predict params
           type: object
+          example: { "paramKey": "paramValue" }
         info:
           description: task predict info
           type: object
+          example: { "infoKey": "infoValue" }
         message:
           type: string
+          example: "Task completed successfully."
+
     Error:
       required:
         - code
@@ -595,6 +724,8 @@ components:
           type: integer
           format: int32
           description: Error code
+          example: 400
         message:
           type: string
           description: Error message
+          example: "Bad Request"
