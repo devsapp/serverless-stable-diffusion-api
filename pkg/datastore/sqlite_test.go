@@ -12,10 +12,10 @@ func TestSQLiteDatastore(t *testing.T) {
 		DBName:    ":memory:", // the memory database for testing purposes
 		TableName: "TestSQLiteDatastore",
 		ColumnConfig: map[string]string{
-			primaryKeyColumnName: "text primary key not null",
-			"value":              "text",
-			"intCol":             "int",
-			"floatCol":           "float",
+			primaryKeyColumnName: "TEXT primary key not null",
+			"value":              "TEXT",
+			"intCol":             "INT",
+			"floatCol":           "FLOAT",
 		},
 		PrimaryKeyColumnName: primaryKeyColumnName,
 	}
@@ -59,6 +59,22 @@ func TestSQLiteDatastore(t *testing.T) {
 	// Note: we do not expect wrong value type will result in error, since Go database/sql will try to convert it automatically.
 	err = ds.Put(key, map[string]interface{}{"value": 123, "intCol": "123", "floatCol": "123.45"})
 	assert.NoError(t, err)
+
+	// Test get with value=123
+	ret, err := ds.Get(key, []string{"value"})
+	assert.NoError(t, err)
+	assert.NotNil(t, ret)
+	assert.Equal(t, "123", ret["value"].(string))
+
+	// Test Update
+	err = ds.Update(key, map[string]interface{}{"value": "234"})
+	assert.NoError(t, err)
+
+	// Test get with value=123
+	ret, err = ds.Get(key, []string{"value"})
+	assert.NoError(t, err)
+	assert.NotNil(t, ret)
+	assert.Equal(t, "234", ret["value"].(string))
 
 	// Test Get with non-existent column.
 	_, err = ds.Get(key, []string{"non_existent_column"})

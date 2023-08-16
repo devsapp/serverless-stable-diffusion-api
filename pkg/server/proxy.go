@@ -17,22 +17,22 @@ type ProxyServer struct {
 
 func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, error) {
 
-	//// init task table
-	//taskDataStore, err := datastore.NewTaskDataStore(dbType)
-	//if err != nil {
-	//	log.Println("taskDataStore init fail")
-	//	return nil, err
-	//}
-	//// init model table
-	//modelDataStore, err := datastore.NewModelDataStore(dbType)
-	//if err != nil {
-	//	log.Println("modelDataStore init fail")
-	//	return nil, err
-	//}
+	// init task table
+	taskDataStore, err := datastore.NewTaskDataStore(dbType)
+	if err != nil {
+		log.Fatal("taskDataStore init fail")
+		return nil, err
+	}
+	// init model table
+	modelDataStore, err := datastore.NewModelDataStore(dbType)
+	if err != nil {
+		log.Fatal("modelDataStore init fail")
+		return nil, err
+	}
 	//// init func manager
 	//function.NewFuncManager(dbType)
 	// init handler
-	proxyHandler := handler.NewProxyHandler()
+	proxyHandler := handler.NewProxyHandler(taskDataStore, modelDataStore, nil)
 
 	// init router
 	router := gin.New()

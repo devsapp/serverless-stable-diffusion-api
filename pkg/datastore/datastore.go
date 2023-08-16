@@ -1,5 +1,7 @@
 package datastore
 
+import "fmt"
+
 type DatastoreType string
 
 const (
@@ -20,6 +22,9 @@ type Datastore interface {
 	// Put inserts or updates the column values in the datastore.
 	// It takes a key and a map of column names to values, and returns an error if the operation failed.
 	Put(key string, values map[string]interface{}) error
+
+	// Update the column values in the datastore
+	Update(key string, values map[string]interface{}) error
 
 	// Get retrieves the column values from the datastore.
 	// It takes a key and a slice of column names, and returns a map of column names to values,
@@ -42,4 +47,15 @@ type Datastore interface {
 
 	// Close close the datastore.
 	Close() error
+}
+
+type DatastoreFactory struct{}
+
+func (f *DatastoreFactory) New(cfg *Config) (Datastore, error) {
+	switch cfg.Type {
+	case SQLite:
+		return NewSQLiteDatastore(cfg), nil
+	default:
+		return nil, fmt.Errorf("unsupported datastore type: %s", cfg.Type)
+	}
 }

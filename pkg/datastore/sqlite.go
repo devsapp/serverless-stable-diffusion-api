@@ -57,12 +57,12 @@ func (ds *SQLiteDatastore) Get(key string, columns []string) (map[string]interfa
 		// We use the type information stored in the Config to create a variable of the correct type.
 		var value interface{}
 		switch ds.config.ColumnConfig[column] {
-		case "text":
+		case "TEXT":
 			value = new(string)
-		case "int":
+		case "INT":
 			// For simplicity, we use int64 for all integers.
 			value = new(int64)
-		case "float":
+		case "FLOAT":
 			value = new(float64)
 		default:
 			// If the column type is not supported, we return an error.
@@ -106,6 +106,24 @@ func (ds *SQLiteDatastore) Put(key string, values map[string]interface{}) error 
 		ds.config.TableName,
 		strings.Join(columns, ", "),
 		strings.Join(placeholders, ", "),
+	)
+	_, err := ds.db.Exec(query, args...)
+	return err
+}
+
+func (ds *SQLiteDatastore) Update(key string, values map[string]interface{}) error {
+	columns := make([]string, 0)
+	args := make([]interface{}, 0)
+	for column, value := range values {
+		columns = append(columns, fmt.Sprintf("%s=?", column))
+		args = append(args, value)
+	}
+	args = append(args, key)
+	query := fmt.Sprintf(
+		"UPDATE %s SET %s WHERE %s = ?",
+		ds.config.TableName,
+		strings.Join(columns, ", "),
+		ds.config.PrimaryKeyColumnName,
 	)
 	_, err := ds.db.Exec(query, args...)
 	return err
