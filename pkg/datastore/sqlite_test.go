@@ -11,7 +11,7 @@ func TestSQLiteDatastore(t *testing.T) {
 	config := &Config{
 		DBName:    ":memory:", // the memory database for testing purposes
 		TableName: "TestSQLiteDatastore",
-		ColumnConfig: map[string]string{
+		ColumnConfig: map[string]interface{}{
 			primaryKeyColumnName: "TEXT primary key not null",
 			"value":              "TEXT",
 			"intCol":             "INT",
@@ -90,7 +90,7 @@ func TestListAll(t *testing.T) {
 	config := &Config{
 		DBName:    ":memory:", // the memory database for testing purposes
 		TableName: "TestListAll",
-		ColumnConfig: map[string]string{
+		ColumnConfig: map[string]interface{}{
 			primaryKeyColumnName: "text primary key not null",
 			"value":              "text",
 			"intCol":             "int",

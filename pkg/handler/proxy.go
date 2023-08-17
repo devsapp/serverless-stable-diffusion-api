@@ -11,13 +11,13 @@ const (
 )
 
 type ProxyHandler struct {
-	userStore  datastore.UserInterface
-	taskStore  datastore.TaskInterface
-	modelStore datastore.ModelInterface
+	userStore  datastore.Datastore
+	taskStore  datastore.Datastore
+	modelStore datastore.Datastore
 }
 
-func NewProxyHandler(taskStore datastore.TaskInterface,
-	modelStore datastore.ModelInterface, userStore datastore.UserInterface) *ProxyHandler {
+func NewProxyHandler(taskStore datastore.Datastore,
+	modelStore datastore.Datastore, userStore datastore.Datastore) *ProxyHandler {
 	return &ProxyHandler{
 		taskStore:  taskStore,
 		modelStore: modelStore,

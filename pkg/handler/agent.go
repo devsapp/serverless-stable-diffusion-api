@@ -7,13 +7,13 @@ import (
 )
 
 type AgentHandler struct {
-	taskStore  datastore.TaskInterface
-	modelStore datastore.ModelInterface
+	taskStore  datastore.Datastore
+	modelStore datastore.Datastore
 	httpClient *http.Client // the http client
 }
 
-func NewAgentHandler(taskStore datastore.TaskInterface,
-	modelStore datastore.ModelInterface) *AgentHandler {
+func NewAgentHandler(taskStore datastore.Datastore,
+	modelStore datastore.Datastore) *AgentHandler {
 	return &AgentHandler{
 		taskStore:  taskStore,
 		modelStore: modelStore,

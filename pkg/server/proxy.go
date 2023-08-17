@@ -12,27 +12,23 @@ import (
 )
 
 type ProxyServer struct {
-	srv *http.Server
+	srv            *http.Server
+	taskDataStore  datastore.Datastore
+	modelDataStore datastore.Datastore
+	userDataStore  datastore.Datastore
 }
 
 func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, error) {
-
+	tableFactory := datastore.DatastoreFactory{}
 	// init task table
-	taskDataStore, err := datastore.NewTaskDataStore(dbType)
-	if err != nil {
-		log.Fatal("taskDataStore init fail")
-		return nil, err
-	}
+	taskDataStore := tableFactory.NewTable(dbType, datastore.KTaskTableName)
 	// init model table
-	modelDataStore, err := datastore.NewModelDataStore(dbType)
-	if err != nil {
-		log.Fatal("modelDataStore init fail")
-		return nil, err
-	}
-	//// init func manager
-	//function.NewFuncManager(dbType)
+	modelDataStore := tableFactory.NewTable(dbType, datastore.KModelTableName)
+	// init user table
+	userDataStore := tableFactory.NewTable(dbType, datastore.KUserTableName)
+
 	// init handler
-	proxyHandler := handler.NewProxyHandler(taskDataStore, modelDataStore, nil)
+	proxyHandler := handler.NewProxyHandler(taskDataStore, modelDataStore, userDataStore)
 
 	// init router
 	router := gin.New()
@@ -44,6 +40,9 @@ func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, 
 			Addr:    net.JoinHostPort("0.0.0.0", port),
 			Handler: router,
 		},
+		taskDataStore:  taskDataStore,
+		userDataStore:  userDataStore,
+		modelDataStore: modelDataStore,
 	}, nil
 }
 
@@ -58,6 +57,9 @@ func (p *ProxyServer) Start() error {
 
 // Close shutdown proxy server, timeout=shutdownTimeout
 func (p *ProxyServer) Close(shutdownTimeout time.Duration) error {
+	p.userDataStore.Close()
+	p.taskDataStore.Close()
+	p.modelDataStore.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := p.srv.Shutdown(ctx); err != nil {

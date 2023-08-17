@@ -137,8 +137,8 @@ func (ds *SQLiteDatastore) Delete(key string) error {
 	return err
 }
 
-func (ds *SQLiteDatastore) ListAll() (map[string]map[string]interface{}, error) {
-	rows, err := ds.db.Query(fmt.Sprintf("SELECT * FROM %s", ds.config.TableName))
+func (ds *SQLiteDatastore) ListAll(columns []string) (map[string]map[string]interface{}, error) {
+	rows, err := ds.db.Query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(columns, ","), ds.config.TableName))
 	if err != nil {
 		return nil, err
 	}

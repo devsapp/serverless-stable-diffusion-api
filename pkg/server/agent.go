@@ -12,23 +12,17 @@ import (
 )
 
 type AgentServer struct {
-	srv *http.Server
+	srv            *http.Server
+	taskDataStore  datastore.Datastore
+	modelDataStore datastore.Datastore
 }
 
 func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, error) {
-
+	tableFactory := datastore.DatastoreFactory{}
 	// init task table
-	taskDataStore, err := datastore.NewTaskDataStore(dbType)
-	if err != nil {
-		log.Fatal("taskDataStore init fail")
-		return nil, err
-	}
+	taskDataStore := tableFactory.NewTable(dbType, datastore.KTaskTableName)
 	// init model table
-	modelDataStore, err := datastore.NewModelDataStore(dbType)
-	if err != nil {
-		log.Fatal("modelDataStore init fail")
-		return nil, err
-	}
+	modelDataStore := tableFactory.NewTable(dbType, datastore.KModelTableName)
 	// init handler
 	agentHandler := handler.NewAgentHandler(taskDataStore, modelDataStore)
 
@@ -42,6 +36,8 @@ func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, 
 			Addr:    net.JoinHostPort("0.0.0.0", port),
 			Handler: router,
 		},
+		taskDataStore:  taskDataStore,
+		modelDataStore: modelDataStore,
 	}, nil
 }
 
@@ -56,6 +52,9 @@ func (p *AgentServer) Start() error {
 
 // Close shutdown proxy server, timeout=shutdownTimeout
 func (p *AgentServer) Close(shutdownTimeout time.Duration) error {
+	p.taskDataStore.Close()
+	p.modelDataStore.Close()
+	// shutdown server
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := p.srv.Shutdown(ctx); err != nil {

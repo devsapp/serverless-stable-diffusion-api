@@ -1,7 +1,5 @@
 package datastore
 
-import "fmt"
-
 type DatastoreType string
 
 const (
@@ -14,8 +12,10 @@ type Config struct {
 	Type                 DatastoreType // the datastore type
 	DBName               string        // the database name
 	TableName            string
-	ColumnConfig         map[string]string // map of column name to column type
+	ColumnConfig         map[string]interface{} // map of column name to column type
 	PrimaryKeyColumnName string
+	TimeToAlive          int
+	MaxVersion           int
 }
 
 type Datastore interface {
@@ -43,19 +43,8 @@ type Datastore interface {
 	// ListAll read all data from the datastore.
 	// It return a nested map, which means map[primaryKey]map[columanName]columanValue.
 	// Note: since it reads all data and store them in memory, so do not call this function on a large datastore.
-	ListAll() (map[string]map[string]interface{}, error)
+	ListAll(columns []string) (map[string]map[string]interface{}, error)
 
 	// Close close the datastore.
 	Close() error
-}
-
-type DatastoreFactory struct{}
-
-func (f *DatastoreFactory) New(cfg *Config) (Datastore, error) {
-	switch cfg.Type {
-	case SQLite:
-		return NewSQLiteDatastore(cfg), nil
-	default:
-		return nil, fmt.Errorf("unsupported datastore type: %s", cfg.Type)
-	}
 }
