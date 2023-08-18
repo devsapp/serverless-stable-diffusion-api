@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/handler"
+	"github.com/devsapp/serverless-stable-diffusion-api/pkg/module"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net"
@@ -13,18 +15,27 @@ import (
 
 type AgentServer struct {
 	srv            *http.Server
+	listenTask     *module.ListenDbTask
 	taskDataStore  datastore.Datastore
 	modelDataStore datastore.Datastore
 }
 
 func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, error) {
+	// init oss manager
+	if err := module.NewOssManager(); err != nil {
+		log.Fatal("oss init fail")
+	}
 	tableFactory := datastore.DatastoreFactory{}
 	// init task table
 	taskDataStore := tableFactory.NewTable(dbType, datastore.KTaskTableName)
 	// init model table
 	modelDataStore := tableFactory.NewTable(dbType, datastore.KModelTableName)
+	// init listen event
+	listenTask := module.NewListenDbTask(config.ConfigGlobal.ListenInterval, taskDataStore, modelDataStore)
+	// add listen model change
+	listenTask.AddTask("modelTask", module.ModelListen, module.ModelChangeEvent)
 	// init handler
-	agentHandler := handler.NewAgentHandler(taskDataStore, modelDataStore)
+	agentHandler := handler.NewAgentHandler(taskDataStore, modelDataStore, listenTask)
 
 	// init router
 	router := gin.New()
@@ -36,6 +47,7 @@ func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, 
 			Addr:    net.JoinHostPort("0.0.0.0", port),
 			Handler: router,
 		},
+		listenTask:     listenTask,
 		taskDataStore:  taskDataStore,
 		modelDataStore: modelDataStore,
 	}, nil
@@ -52,6 +64,8 @@ func (p *AgentServer) Start() error {
 
 // Close shutdown proxy server, timeout=shutdownTimeout
 func (p *AgentServer) Close(shutdownTimeout time.Duration) error {
+	// close listen task
+	p.listenTask.Close()
 	p.taskDataStore.Close()
 	p.modelDataStore.Close()
 	// shutdown server

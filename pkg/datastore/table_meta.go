@@ -2,13 +2,13 @@ package datastore
 
 // function table
 const (
-	KFuncTableName  = "function"
-	KFuncKey        = "PRIMARY_KEY"
-	KFuncSdModel    = "SD_MODEL"
-	KFuncSdVae      = "SD_VAE"
-	KFuncEndPoint   = "END_POINT"
-	KCreateTime     = "FUNC_CREATE_TIME"
-	KLastModifyTime = "FUNC_LAST_MODIFY_TIME"
+	KFuncTableName      = "function"
+	KFuncKey            = "PRIMARY_KEY"
+	KFuncSdModel        = "SD_MODEL"
+	KFuncSdVae          = "SD_VAE"
+	KFuncEndPoint       = "END_POINT"
+	KFuncCreateTime     = "FUNC_CREATE_TIME"
+	KFuncLastModifyTime = "FUNC_LAST_MODIFY_TIME"
 )
 
 // models table

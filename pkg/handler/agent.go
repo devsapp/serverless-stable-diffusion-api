@@ -2,6 +2,7 @@ package handler
 
 import (
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
+	"github.com/devsapp/serverless-stable-diffusion-api/pkg/module"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -10,14 +11,16 @@ type AgentHandler struct {
 	taskStore  datastore.Datastore
 	modelStore datastore.Datastore
 	httpClient *http.Client // the http client
+	listenTask *module.ListenDbTask
 }
 
 func NewAgentHandler(taskStore datastore.Datastore,
-	modelStore datastore.Datastore) *AgentHandler {
+	modelStore datastore.Datastore, listenTask *module.ListenDbTask) *AgentHandler {
 	return &AgentHandler{
 		taskStore:  taskStore,
 		modelStore: modelStore,
 		httpClient: &http.Client{},
+		listenTask: listenTask,
 	}
 }
 

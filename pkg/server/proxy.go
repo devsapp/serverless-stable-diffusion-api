@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/handler"
+	"github.com/devsapp/serverless-stable-diffusion-api/pkg/module"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net"
@@ -16,9 +17,14 @@ type ProxyServer struct {
 	taskDataStore  datastore.Datastore
 	modelDataStore datastore.Datastore
 	userDataStore  datastore.Datastore
+	funcDataStore  datastore.Datastore
 }
 
 func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, error) {
+	// init oss manager
+	if err := module.NewOssManager(); err != nil {
+		return nil, err
+	}
 	tableFactory := datastore.DatastoreFactory{}
 	// init task table
 	taskDataStore := tableFactory.NewTable(dbType, datastore.KTaskTableName)
@@ -26,7 +32,12 @@ func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, 
 	modelDataStore := tableFactory.NewTable(dbType, datastore.KModelTableName)
 	// init user table
 	userDataStore := tableFactory.NewTable(dbType, datastore.KUserTableName)
-
+	// init function table
+	funcDataStore := tableFactory.NewTable(dbType, datastore.KFuncTableName)
+	// init func manager
+	//if err := module.InitFuncManager(funcDataStore); err != nil {
+	//	return nil, err
+	//}
 	// init handler
 	proxyHandler := handler.NewProxyHandler(taskDataStore, modelDataStore, userDataStore)
 
@@ -43,6 +54,7 @@ func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, 
 		taskDataStore:  taskDataStore,
 		userDataStore:  userDataStore,
 		modelDataStore: modelDataStore,
+		funcDataStore:  funcDataStore,
 	}, nil
 }
 
@@ -60,6 +72,7 @@ func (p *ProxyServer) Close(shutdownTimeout time.Duration) error {
 	p.userDataStore.Close()
 	p.taskDataStore.Close()
 	p.modelDataStore.Close()
+	p.funcDataStore.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := p.srv.Shutdown(ctx); err != nil {
