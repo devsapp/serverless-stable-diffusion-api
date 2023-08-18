@@ -47,7 +47,7 @@ type Config struct {
 
 func DefaultConfig() *Config {
 	return &Config{
-		DbSqlite:        "/Users/wangjia/Desktop/code/dev/serverless-stable-diffusion-api/sqlite3",
+		DbSqlite:        "./sqlite3",
 		SdUrlPrefix:     "http://localhost:7860",
 		ImageOutputDir:  "./images/",
 		ListenInterval:  1,
