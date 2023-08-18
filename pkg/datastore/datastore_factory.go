@@ -25,7 +25,7 @@ func NewSQLiteConfig(tableName string) *Config {
 	}
 	switch tableName {
 	case KTaskTableName:
-		config.ColumnConfig = map[string]interface{}{
+		config.ColumnConfig = map[string]string{
 			KTaskIdColumnName:       "TEXT PRIMARY KEY NOT NULL",
 			KTaskProgressColumnName: "TEXT",
 			KTaskUser:               "TEXT",
@@ -40,7 +40,7 @@ func NewSQLiteConfig(tableName string) *Config {
 		}
 		config.PrimaryKeyColumnName = KTaskIdColumnName
 	case KModelTableName:
-		config.ColumnConfig = map[string]interface{}{
+		config.ColumnConfig = map[string]string{
 			KModelName:       "TEXT PRIMARY KEY NOT NULL",
 			KModelType:       "TEXT",
 			KModelOssPath:    "TEXT",
@@ -51,7 +51,7 @@ func NewSQLiteConfig(tableName string) *Config {
 		}
 		config.PrimaryKeyColumnName = KModelName
 	case KFuncTableName:
-		config.ColumnConfig = map[string]interface{}{
+		config.ColumnConfig = map[string]string{
 			KFuncKey:        "TEXT PRIMARY KEY NOT NULL",
 			KFuncSdModel:    "TEXT",
 			KFuncSdVae:      "TEXT",
@@ -61,7 +61,7 @@ func NewSQLiteConfig(tableName string) *Config {
 		}
 		config.PrimaryKeyColumnName = KFuncKey
 	case KUserTableName:
-		config.ColumnConfig = map[string]interface{}{
+		config.ColumnConfig = map[string]string{
 			KUserName:             "TEXT PRIMARY KEY NOT NULL",
 			KUserSession:          "TEXT",
 			KUserSessionValidTime: "TEXT",

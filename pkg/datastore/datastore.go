@@ -12,7 +12,7 @@ type Config struct {
 	Type                 DatastoreType // the datastore type
 	DBName               string        // the database name
 	TableName            string
-	ColumnConfig         map[string]interface{} // map of column name to column type
+	ColumnConfig         map[string]string // map of column name to column type
 	PrimaryKeyColumnName string
 	TimeToAlive          int
 	MaxVersion           int
