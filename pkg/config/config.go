@@ -11,6 +11,15 @@ type Config struct {
 
 	//db
 	DbSqlite string
+
+	// Session
+	SessionExpire int
+
+	// sd
+	SdUrlPrefix string
+
+	// output
+	ImageOutputDir string
 }
 
 func InitConfig(fn string) {

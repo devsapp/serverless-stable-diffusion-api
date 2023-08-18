@@ -11,11 +11,11 @@ func TestSQLiteDatastore(t *testing.T) {
 	config := &Config{
 		DBName:    ":memory:", // the memory database for testing purposes
 		TableName: "TestSQLiteDatastore",
-		ColumnConfig: map[string]string{
-			primaryKeyColumnName: "text primary key not null",
-			"value":              "text",
-			"intCol":             "int",
-			"floatCol":           "float",
+		ColumnConfig: map[string]interface{}{
+			primaryKeyColumnName: "TEXT primary key not null",
+			"value":              "TEXT",
+			"intCol":             "INT",
+			"floatCol":           "FLOAT",
 		},
 		PrimaryKeyColumnName: primaryKeyColumnName,
 	}
@@ -60,6 +60,22 @@ func TestSQLiteDatastore(t *testing.T) {
 	err = ds.Put(key, map[string]interface{}{"value": 123, "intCol": "123", "floatCol": "123.45"})
 	assert.NoError(t, err)
 
+	// Test get with value=123
+	ret, err := ds.Get(key, []string{"value"})
+	assert.NoError(t, err)
+	assert.NotNil(t, ret)
+	assert.Equal(t, "123", ret["value"].(string))
+
+	// Test Update
+	err = ds.Update(key, map[string]interface{}{"value": "234"})
+	assert.NoError(t, err)
+
+	// Test get with value=123
+	ret, err = ds.Get(key, []string{"value"})
+	assert.NoError(t, err)
+	assert.NotNil(t, ret)
+	assert.Equal(t, "234", ret["value"].(string))
+
 	// Test Get with non-existent column.
 	_, err = ds.Get(key, []string{"non_existent_column"})
 	assert.Error(t, err)
@@ -74,7 +90,7 @@ func TestListAll(t *testing.T) {
 	config := &Config{
 		DBName:    ":memory:", // the memory database for testing purposes
 		TableName: "TestListAll",
-		ColumnConfig: map[string]string{
+		ColumnConfig: map[string]interface{}{
 			primaryKeyColumnName: "text primary key not null",
 			"value":              "text",
 			"intCol":             "int",
