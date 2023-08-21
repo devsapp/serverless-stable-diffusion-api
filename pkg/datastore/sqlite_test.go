@@ -11,7 +11,7 @@ func TestSQLiteDatastore(t *testing.T) {
 	config := &Config{
 		DBName:    ":memory:", // the memory database for testing purposes
 		TableName: "TestSQLiteDatastore",
-		ColumnConfig: map[string]interface{}{
+		ColumnConfig: map[string]string{
 			primaryKeyColumnName: "TEXT primary key not null",
 			"value":              "TEXT",
 			"intCol":             "INT",
@@ -90,7 +90,7 @@ func TestListAll(t *testing.T) {
 	config := &Config{
 		DBName:    ":memory:", // the memory database for testing purposes
 		TableName: "TestListAll",
-		ColumnConfig: map[string]interface{}{
+		ColumnConfig: map[string]string{
 			primaryKeyColumnName: "text primary key not null",
 			"value":              "text",
 			"intCol":             "int",
@@ -113,7 +113,7 @@ func TestListAll(t *testing.T) {
 	}
 
 	// Call ListAll and check the result.
-	result, err := ds.ListAll()
+	result, err := ds.ListAll([]string{primaryKeyColumnName, "value", "intCol", "floatCol"})
 	assert.NoError(t, err)
 	for k, v := range testData {
 		r, ok := result[k]
@@ -130,7 +130,7 @@ func TestListAll(t *testing.T) {
 	}
 
 	// Call ListAll again and check the result.
-	result, err = ds.ListAll()
+	result, err = ds.ListAll([]string{primaryKeyColumnName, "value", "intCol", "floatCol"})
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(result))
 
