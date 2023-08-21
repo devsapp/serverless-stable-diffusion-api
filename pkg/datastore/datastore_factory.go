@@ -59,16 +59,16 @@ func NewSQLiteConfig(tableName string) *Config {
 			KModelModifyTime: "TEXT",
 		}
 		config.PrimaryKeyColumnName = KModelName
-	case KFuncTableName:
+	case KModelServiceTableName:
 		config.ColumnConfig = map[string]string{
-			KFuncKey:            "TEXT PRIMARY KEY NOT NULL",
-			KFuncSdModel:        "TEXT",
-			KFuncSdVae:          "TEXT",
-			KFuncEndPoint:       "TEXT",
-			KFuncCreateTime:     "TEXT",
-			KFuncLastModifyTime: "TEXT",
+			KModelServiceKey:            "TEXT PRIMARY KEY NOT NULL",
+			KModelServiceSdModel:        "TEXT",
+			KModelServiceSdVae:          "TEXT",
+			KModelServiceEndPoint:       "TEXT",
+			KModelServiceCreateTime:     "TEXT",
+			KModelServiceLastModifyTime: "TEXT",
 		}
-		config.PrimaryKeyColumnName = KFuncKey
+		config.PrimaryKeyColumnName = KModelServiceKey
 	case KUserTableName:
 		config.ColumnConfig = map[string]string{
 			KUserName:             "TEXT PRIMARY KEY NOT NULL",
@@ -118,16 +118,16 @@ func NewOtsConfig(tableName string) *Config {
 			KModelModifyTime: "TEXT",
 		}
 		config.PrimaryKeyColumnName = KModelName
-	case KFuncTableName:
+	case KModelServiceTableName:
 		config.ColumnConfig = map[string]string{
-			KFuncKey:            "TEXT",
-			KFuncSdModel:        "TEXT",
-			KFuncSdVae:          "TEXT",
-			KFuncEndPoint:       "TEXT",
-			KFuncCreateTime:     "TEXT",
-			KFuncLastModifyTime: "TEXT",
+			KModelServiceKey:            "TEXT",
+			KModelServiceSdModel:        "TEXT",
+			KModelServiceSdVae:          "TEXT",
+			KModelServiceEndPoint:       "TEXT",
+			KModelServiceCreateTime:     "TEXT",
+			KModelServiceLastModifyTime: "TEXT",
 		}
-		config.PrimaryKeyColumnName = KFuncKey
+		config.PrimaryKeyColumnName = KModelServiceKey
 	case KUserTableName:
 		config.ColumnConfig = map[string]string{
 			KUserName:             "TEXT",
