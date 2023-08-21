@@ -11,6 +11,7 @@ import (
 var client = &http.Client{}
 
 // ModelChangeEvent  models change callback func
+// only deal lore/controNet models
 func ModelChangeEvent(v any) {
 	modelInfo := v.(*modelChangeSignal)
 	modelType := modelInfo.modelType
