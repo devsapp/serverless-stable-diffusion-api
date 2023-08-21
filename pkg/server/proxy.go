@@ -33,11 +33,11 @@ func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, 
 	// init user table
 	userDataStore := tableFactory.NewTable(dbType, datastore.KUserTableName)
 	// init function table
-	funcDataStore := tableFactory.NewTable(dbType, datastore.KFuncTableName)
+	funcDataStore := tableFactory.NewTable(dbType, datastore.KModelServiceTableName)
 	// init func manager
-	//if err := module.InitFuncManager(funcDataStore); err != nil {
-	//	return nil, err
-	//}
+	if err := module.InitFuncManager(funcDataStore); err != nil {
+		return nil, err
+	}
 	// init handler
 	proxyHandler := handler.NewProxyHandler(taskDataStore, modelDataStore, userDataStore)
 

@@ -8,6 +8,7 @@ const (
 	MODEL_LOADING     = "loading"
 	MODEL_LOADED      = "loaded"
 	MODEL_UNLOADED    = "unloaded"
+	MODEL_DELETE      = "deleted"
 
 	// task status
 	TASK_INPROGRESS = "running"
@@ -18,11 +19,12 @@ const (
 	HTTPTIMEOUT = 60 * time.Second
 )
 
-// ERROR message
+// error message
 const (
-	INTERNALERROR = "an internal error"
-	BADREQUEST    = "bad request body"
-	NOTFOUND      = "not found"
+	INTERNALERROR   = "an internal error"
+	BADREQUEST      = "bad request body"
+	NOTFOUND        = "not found"
+	NOFOUNDENDPOINT = "not found sd endpoint, please retry"
 )
 
 // model type
@@ -46,4 +48,21 @@ const (
 // ots
 const (
 	COLPK = "PK"
+)
+
+const (
+	ACCOUNT_ID        = "FC_ACCOUNT_ID"
+	ACCESS_KEY_ID     = "ALIBABA_CLOUD_ACCESS_KEY_ID"
+	ACCESS_KEY_SECRET = "ALIBABA_CLOUD_ACCESS_KEY_SECRET"
+)
+
+// function http trigger
+const (
+	TRIGGER_TYPE         = "http"
+	TRIGGER_NAME         = "defaultTrigger"
+	HTTP_GET             = "GET"
+	HTTP_POST            = "POST"
+	HTTP_PUT             = "PUT"
+	AUTH_TYPE            = "anonymous"
+	MODEL_REFRESH_SIGNAL = "MODEL_REFRESH_SIGNAL"
 )
