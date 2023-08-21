@@ -53,8 +53,6 @@ func DefaultConfig() *Config {
 		ListenInterval:  1,
 		OssEndpoint:     "oss-cn-beijing.aliyuncs.com",
 		Bucket:          "sd-api-test",
-		AccessKeyId:     "xxxxxx",
-		AccessKeySecret: "xxxxxxx",
 		ModelsNasPath:   "./nas/models",
 		OtsEndpoint:     "https://sd-api-test.cn-beijing.ots.aliyuncs.com",
 		OtsInstanceName: "sd-api-test",
