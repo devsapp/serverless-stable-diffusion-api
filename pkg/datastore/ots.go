@@ -15,12 +15,6 @@ var (
 	}
 )
 
-type OtsAttr struct {
-	Column  string
-	Val     interface{}
-	Version int64
-}
-
 // example: "TEXT" to tablestore.DefinedColumn_STRING
 func getOtsType(s string) tablestore.DefinedColumnType {
 	return strToOtsType[s]

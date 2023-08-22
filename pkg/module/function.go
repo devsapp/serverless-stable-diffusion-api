@@ -98,7 +98,6 @@ func (f *FuncManager) UpdateFunctionEnv(modelName string) error {
 	if infos == nil {
 		return nil
 	}
-	log.Println(infos)
 	for _, info := range infos {
 		env := getEnv(info.sdModel, info.sdVae)
 		key := getKey(info.sdModel, info.sdVae)
