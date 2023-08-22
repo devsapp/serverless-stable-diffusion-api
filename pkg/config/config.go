@@ -1,5 +1,10 @@
 package config
 
+import (
+	"errors"
+	"os"
+)
+
 var ConfigGlobal = DefaultConfig()
 
 type Config struct {
@@ -38,6 +43,9 @@ type Config struct {
 	InstanceType        string
 	InstanceConcurrency int32
 	MemorySize          int32
+	DiskSize            int32
+	GpuMemorySize       int32
+	ExtraArgs           string
 	// sd
 	SdUrlPrefix string
 	// output
@@ -52,15 +60,28 @@ func DefaultConfig() *Config {
 		ImageOutputDir:  "./images/",
 		ListenInterval:  1,
 		OssEndpoint:     "oss-cn-beijing.aliyuncs.com",
-		Bucket:          "sd-api-test",
+		Bucket:          "sd-api-t",
+		AccountId:       os.Getenv(ACCOUNT_ID),
+		AccessKeyId:     os.Getenv(ACCESS_KEY_ID),
+		AccessKeySecret: os.Getenv(ACCESS_KEY_SECRET),
 		ModelsNasPath:   "./nas/models",
 		OtsEndpoint:     "https://sd-api-test.cn-beijing.ots.aliyuncs.com",
-		OtsInstanceName: "sd-api-test",
+		OtsInstanceName: "sd-api-t",
 		OtsMaxVersion:   1,
 		OtsTimeToAlive:  -1,
+		Region:          "cn-beijing",
+		ServiceName:     "fc-stable-diffusion-api",
+		Image:           "registry.cn-beijing.aliyuncs.com/aliyun-fc/fc-stable-diffusion:anime-v2",
 	}
 }
 
-func InitConfig(fn string) {
+func InitConfig(fn string) error {
 	ConfigGlobal = &Config{}
+	ConfigGlobal.AccountId = os.Getenv(ACCOUNT_ID)
+	ConfigGlobal.AccessKeyId = os.Getenv(ACCESS_KEY_ID)
+	ConfigGlobal.AccessKeySecret = os.Getenv(ACCESS_KEY_SECRET)
+	if ConfigGlobal.AccountId == "" || ConfigGlobal.AccessKeyId == "" || ConfigGlobal.AccessKeySecret == "" {
+		return errors.New("not set ACCOUNT_ID || ACCESS_KEY_Id || ACCESS_KEY_SECRET, please check")
+	}
+	return nil
 }

@@ -34,7 +34,9 @@ func main() {
 	flag.Parse()
 
 	// init config
-	config.InitConfig(*configFile)
+	if err := config.InitConfig(*configFile); err != nil {
+		log.Fatal(err.Error())
+	}
 
 	// init server and start
 	agent, err := server.NewAgentServer(*port, datastore.DatastoreType(*dbType))
