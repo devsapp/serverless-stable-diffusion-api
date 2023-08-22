@@ -19,16 +19,22 @@ const (
 	RETRY_INTERVALMS = time.Duration(10) * time.Millisecond
 )
 
+type SdModels struct {
+	sdModel string
+	sdVae   string
+}
+
 var FuncManagerGlobal *FuncManager
 
 // FuncManager manager fc function
 // create function and http trigger
 // update instance env
 type FuncManager struct {
-	endpoints map[string]string
-	funcStore datastore.Datastore
-	fcClient  *fc.Client
-	lock      sync.RWMutex
+	endpoints   map[string]string
+	modelToInfo map[string][]*SdModels
+	funcStore   datastore.Datastore
+	fcClient    *fc.Client
+	lock        sync.RWMutex
 }
 
 func InitFuncManager(funcStore datastore.Datastore) error {
@@ -41,9 +47,10 @@ func InitFuncManager(funcStore datastore.Datastore) error {
 		return err
 	}
 	FuncManagerGlobal = &FuncManager{
-		endpoints: make(map[string]string),
-		funcStore: funcStore,
-		fcClient:  fcClient,
+		endpoints:   make(map[string]string),
+		funcStore:   funcStore,
+		fcClient:    fcClient,
+		modelToInfo: make(map[string][]*SdModels),
 	}
 	// load func endpoint to cache
 	FuncManagerGlobal.loadFunc()
@@ -72,12 +79,7 @@ func (f *FuncManager) GetEndpoint(sdModel, sdVae string) (string, error) {
 			return endpoint, nil
 		}
 		// third create function
-		if endpoint := f.createFunc(sdModel, sdVae, map[string]*string{
-			"EXTRA_ARGS":                utils.String(config.ConfigGlobal.ExtraArgs),
-			"SD_MODEL":                  utils.String(sdModel),
-			"SD_VAE":                    utils.String(sdVae),
-			config.MODEL_REFRESH_SIGNAL: utils.String(fmt.Sprintf("%d", utils.TimestampS())), // value = now timestamp
-		}); endpoint != "" {
+		if endpoint := f.createFunc(sdModel, sdVae, getEnv(sdModel, sdVae)); endpoint != "" {
 			f.lock.Unlock()
 			return endpoint, nil
 		}
@@ -90,24 +92,22 @@ func (f *FuncManager) GetEndpoint(sdModel, sdVae string) (string, error) {
 }
 
 // UpdateFunctionEnv update instance env
-func (f *FuncManager) UpdateFunctionEnv(sdModel, sdVae string, env map[string]*string) error {
-	key := getKey(sdModel, sdVae)
-	// check func existed or not
-	// first get from cache
-	f.lock.RLock()
-	if _, ok := f.endpoints[key]; !ok {
-		// second get from db
-		if data, err := f.funcStore.Get(key, []string{datastore.KModelServiceEndPoint}); err != nil || len(data) == 0 {
-			f.lock.RUnlock()
-			return nil
-		}
+// input modelName and env
+func (f *FuncManager) UpdateFunctionEnv(modelName string) error {
+	infos := f.getModelInfo(modelName)
+	if infos == nil {
+		return nil
 	}
-	f.lock.RUnlock()
-	// function existed and update env
-	functionName := getFunctionName(key)
-	updateRequest := &fc.UpdateFunctionRequest{EnvironmentVariables: env}
-	if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName, updateRequest); err != nil {
-		return err
+	log.Println(infos)
+	for _, info := range infos {
+		env := getEnv(info.sdModel, info.sdVae)
+		key := getKey(info.sdModel, info.sdVae)
+		functionName := getFunctionName(key)
+		if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
+			new(fc.UpdateFunctionRequest).SetGpuMemorySize(config.ConfigGlobal.GpuMemorySize).
+				SetEnvironmentVariables(env)); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -150,6 +150,8 @@ func (f *FuncManager) createFunc(sdModel, sdVae string, env map[string]*string) 
 
 // load endpoint from db
 func (f *FuncManager) loadFunc() {
+	// clear modelToInfo
+	f.modelToInfo = make(map[string][]*SdModels)
 	// load func from db
 	funcAll, _ := f.funcStore.ListAll([]string{datastore.KModelServiceKey, datastore.KModelServiceEndPoint,
 		datastore.KModelServiceSdModel, datastore.KModelServiceSdVae})
@@ -157,7 +159,49 @@ func (f *FuncManager) loadFunc() {
 		key := data[datastore.KModelServiceKey].(string)
 		endpoint := data[datastore.KModelServiceEndPoint].(string)
 		f.endpoints[key] = endpoint
+		sdModel := data[datastore.KModelServiceSdModel].(string)
+		sdVae := data[datastore.KModelServiceSdVae].(string)
+		info := &SdModels{
+			sdModel: sdModel,
+			sdVae:   sdVae,
+		}
+		if _, ok := f.modelToInfo[sdModel]; !ok {
+			f.modelToInfo[sdModel] = []*SdModels{info}
+		} else {
+			f.modelToInfo[sdModel] = append(f.modelToInfo[sdModel], info)
+		}
+		if _, ok := f.modelToInfo[sdVae]; !ok {
+			f.modelToInfo[sdVae] = []*SdModels{info}
+		} else {
+			f.modelToInfo[sdVae] = append(f.modelToInfo[sdVae], info)
+		}
 	}
+
+}
+
+// input sdModel or sdVae return (sdModel && sdVae)
+func (f *FuncManager) getModelInfo(modelName string) []*SdModels {
+	// first get from cache
+	f.lock.RLock()
+	info, ok := f.modelToInfo[modelName]
+	f.lock.RUnlock()
+	if ok {
+		return info
+	}
+
+	// second load db and update cache
+	f.lock.Lock()
+	f.loadFunc()
+	f.lock.Unlock()
+	log.Println(f.modelToInfo)
+	// third get from cache
+	f.lock.RLock()
+	info, ok = f.modelToInfo[modelName]
+	f.lock.RUnlock()
+	if ok {
+		return info
+	}
+	return nil
 }
 
 // write func into db
@@ -237,4 +281,13 @@ func getKey(sdModel, sdVae string) string {
 // hash key, avoid generating invalid characters
 func getFunctionName(key string) string {
 	return fmt.Sprintf("sd_%s", utils.Hash(key))
+}
+
+func getEnv(sdModel, sdVae string) map[string]*string {
+	return map[string]*string{
+		config.SD_START_PARAMS:      utils.String(config.ConfigGlobal.ExtraArgs),
+		config.MODEL_SD:             utils.String(sdModel),
+		config.MODEL_SD_VAE:         utils.String(sdVae),
+		config.MODEL_REFRESH_SIGNAL: utils.String(fmt.Sprintf("%d", utils.TimestampS())), // value = now timestamp
+	}
 }

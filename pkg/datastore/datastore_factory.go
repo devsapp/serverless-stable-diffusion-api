@@ -16,7 +16,7 @@ func (f *DatastoreFactory) NewTable(dbType DatastoreType, tableName string) Data
 		cfg := NewOtsConfig(tableName)
 		otsStore, err := NewOtsDatastore(cfg)
 		if err != nil {
-			panic("init ots fail")
+			panic(fmt.Sprintf("init ots fail, err=%s", err.Error()))
 			return nil
 		}
 		return otsStore
@@ -74,12 +74,22 @@ func NewSQLiteConfig(tableName string) *Config {
 			KUserName:             "TEXT PRIMARY KEY NOT NULL",
 			KUserSession:          "TEXT",
 			KUserSessionValidTime: "TEXT",
-			kUserConfig:           "TEXT",
+			KUserConfig:           "TEXT",
 			KUserConfigVer:        "TEXT",
 			KUserCreateTime:       "TEXT",
-			kUserModifyTime:       "TEXT",
+			KUserModifyTime:       "TEXT",
+			KUserPassword:         "TEXT",
 		}
 		config.PrimaryKeyColumnName = KUserName
+	case KConfigTableName:
+		config.ColumnConfig = map[string]string{
+			KConfigKey:        "TEXT PRIMARY KEY NOT NULL",
+			KConfigVal:        "TEXT",
+			KConfigVer:        "TEXT",
+			KConfigCreateTime: "TEXT",
+			KConfigModifyTime: "TEXT",
+		}
+		config.PrimaryKeyColumnName = KConfigKey
 	}
 	return config
 }
@@ -133,13 +143,23 @@ func NewOtsConfig(tableName string) *Config {
 			KUserName:             "TEXT",
 			KUserSession:          "TEXT",
 			KUserSessionValidTime: "TEXT",
-			kUserConfig:           "TEXT",
+			KUserConfig:           "TEXT",
 			KUserConfigVer:        "TEXT",
 			KUserCreateTime:       "TEXT",
-			kUserModifyTime:       "TEXT",
+			KUserModifyTime:       "TEXT",
+			KUserPassword:         "TEXT",
 		}
 		config.PrimaryKeyColumnName = KUserName
 		config.MaxVersion = 10
+	case KConfigTableName:
+		config.ColumnConfig = map[string]string{
+			KConfigKey:        "TEXT",
+			KConfigVal:        "TEXT",
+			KConfigVer:        "TEXT",
+			KConfigCreateTime: "TEXT",
+			KConfigModifyTime: "TEXT",
+		}
+		config.PrimaryKeyColumnName = KConfigKey
 	}
 	return config
 }

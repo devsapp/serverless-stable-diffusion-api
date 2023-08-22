@@ -14,7 +14,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Model"
+              $ref: "#/components/schemas/ModelAttributes"
       responses:
         "200":
           description: register model response
@@ -61,7 +61,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Model"
+              $ref: "#/components/schemas/ModelAttributes"
       responses:
         "200":
           description: update model success
@@ -234,6 +234,54 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /options:
+    post:
+      summary: update config options
+      operationId: updateOptions
+      requestBody:
+        description: config option
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OptionRequest'
+      responses:
+        '200':
+          description: update config options success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseMessage'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /login:
+    post:
+      summary: user login
+      operationId: login
+      requestBody:
+        description: login body, include username, password
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLoginRequest'
+      responses:
+        '200':
+          description: login response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserLoginResponse'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
 components:
   schemas:
@@ -714,7 +762,49 @@ components:
         message:
           type: string
           example: "Task completed successfully."
-
+    OptionRequest:
+      description: config params
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          example: "{}"
+    ResponseMessage:
+      description: response message
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          example: "success"
+    UserLoginRequest:
+      description: user login request, include username and password
+      required:
+        - userName
+        - password
+      properties:
+        userName:
+          type: string
+          example: "admin"
+        password:
+          type: string
+          example: "123456sdfghj"
+    UserLoginResponse:
+      description: user login response
+      required:
+        - token
+        - userName
+      properties:
+        token:
+          type: string
+          example: "qwerthdkflglglglhjdhjdhd"
+        userName:
+          type: string
+          example: "admin"
+        message:
+          type: string
+          example: "success"
     Error:
       required:
         - code

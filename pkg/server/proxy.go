@@ -18,6 +18,7 @@ type ProxyServer struct {
 	modelDataStore datastore.Datastore
 	userDataStore  datastore.Datastore
 	funcDataStore  datastore.Datastore
+	configStore    datastore.Datastore
 }
 
 func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, error) {
@@ -32,18 +33,25 @@ func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, 
 	modelDataStore := tableFactory.NewTable(dbType, datastore.KModelTableName)
 	// init user table
 	userDataStore := tableFactory.NewTable(dbType, datastore.KUserTableName)
+	// init config table
+	configDataStore := tableFactory.NewTable(dbType, datastore.KConfigTableName)
 	// init function table
 	funcDataStore := tableFactory.NewTable(dbType, datastore.KModelServiceTableName)
 	// init func manager
 	if err := module.InitFuncManager(funcDataStore); err != nil {
 		return nil, err
 	}
+
+	if err := module.InitUserManager(userDataStore); err != nil {
+		return nil, err
+	}
 	// init handler
-	proxyHandler := handler.NewProxyHandler(taskDataStore, modelDataStore, userDataStore)
+	proxyHandler := handler.NewProxyHandler(taskDataStore, modelDataStore, userDataStore, configDataStore)
 
 	// init router
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
+	router.Use(handler.ApiAuth())
 	handler.RegisterHandlers(router, proxyHandler)
 
 	return &ProxyServer{
@@ -55,6 +63,7 @@ func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, 
 		userDataStore:  userDataStore,
 		modelDataStore: modelDataStore,
 		funcDataStore:  funcDataStore,
+		configStore:    configDataStore,
 	}, nil
 }
 
@@ -73,6 +82,7 @@ func (p *ProxyServer) Close(shutdownTimeout time.Duration) error {
 	p.taskDataStore.Close()
 	p.modelDataStore.Close()
 	p.funcDataStore.Close()
+	p.configStore.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := p.srv.Shutdown(ctx); err != nil {

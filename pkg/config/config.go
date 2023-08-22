@@ -33,7 +33,7 @@ type Config struct {
 
 	// proxy
 	// Session
-	SessionExpire int
+	SessionExpire int64
 	ModelsNasPath string // sd models dir nas path
 
 	// agent
