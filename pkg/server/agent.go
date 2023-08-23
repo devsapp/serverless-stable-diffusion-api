@@ -14,10 +14,11 @@ import (
 )
 
 type AgentServer struct {
-	srv            *http.Server
-	listenTask     *module.ListenDbTask
-	taskDataStore  datastore.Datastore
-	modelDataStore datastore.Datastore
+	srv             *http.Server
+	listenTask      *module.ListenDbTask
+	taskDataStore   datastore.Datastore
+	modelDataStore  datastore.Datastore
+	configDataStore datastore.Datastore
 }
 
 func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, error) {
@@ -30,12 +31,14 @@ func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, 
 	taskDataStore := tableFactory.NewTable(dbType, datastore.KTaskTableName)
 	// init model table
 	modelDataStore := tableFactory.NewTable(dbType, datastore.KModelTableName)
+	// init config table
+	configDataStore := tableFactory.NewTable(dbType, datastore.KConfigTableName)
 	// init listen event
 	listenTask := module.NewListenDbTask(config.ConfigGlobal.ListenInterval, taskDataStore, modelDataStore)
 	// add listen model change
 	listenTask.AddTask("modelTask", module.ModelListen, module.ModelChangeEvent)
 	// init handler
-	agentHandler := handler.NewAgentHandler(taskDataStore, modelDataStore, listenTask)
+	agentHandler := handler.NewAgentHandler(taskDataStore, modelDataStore, configDataStore, listenTask)
 
 	// init router
 	router := gin.New()
@@ -47,9 +50,10 @@ func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, 
 			Addr:    net.JoinHostPort("0.0.0.0", port),
 			Handler: router,
 		},
-		listenTask:     listenTask,
-		taskDataStore:  taskDataStore,
-		modelDataStore: modelDataStore,
+		listenTask:      listenTask,
+		taskDataStore:   taskDataStore,
+		modelDataStore:  modelDataStore,
+		configDataStore: configDataStore,
 	}, nil
 }
 
@@ -68,6 +72,7 @@ func (p *AgentServer) Close(shutdownTimeout time.Duration) error {
 	p.listenTask.Close()
 	p.taskDataStore.Close()
 	p.modelDataStore.Close()
+	p.configDataStore.Close()
 	// shutdown server
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()

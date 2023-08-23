@@ -11,7 +11,7 @@ import (
 var client = &http.Client{}
 
 // ModelChangeEvent  models change callback func
-// only deal lora/controlNet models
+// only deal lore/controNet models
 func ModelChangeEvent(v any) {
 	modelInfo := v.(*modelChangeSignal)
 	modelType := modelInfo.modelType
@@ -37,15 +37,17 @@ func ModelChangeEvent(v any) {
 		datastore.KModelStatus: config.MODEL_LOADED}); err != nil {
 		log.Println("listen model update status fail err=", err.Error())
 	}
+	log.Println("listen models signal, model=", modelInfo.modelName)
 }
 
 // CancelEvent tasks cancel signal callback
 func CancelEvent(v any) {
-	path := config.PROGRESS
+	path := config.CANCEL
 	url := fmt.Sprintf("%s%s", config.ConfigGlobal.SdUrlPrefix, path)
 	req, _ := http.NewRequest("POST", url, nil)
 	_, err := client.Do(req)
 	if err != nil {
 		log.Println("listen cancel do fail")
 	}
+	log.Println("listen cancel signal, url=", url)
 }

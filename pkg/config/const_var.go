@@ -17,14 +17,21 @@ const (
 	TASK_FINISH     = "succeeded"
 
 	HTTPTIMEOUT = 60 * time.Second
+
+	// cancel val
+	CANCEL_INIT  = 0
+	CANCEL_VALID = 1
+
+	PROGRESS_INTERVAL = 500
 )
 
 // error message
 const (
-	INTERNALERROR   = "an internal error"
-	BADREQUEST      = "bad request body"
-	NOTFOUND        = "not found"
-	NOFOUNDENDPOINT = "not found sd endpoint, please retry"
+	INTERNALERROR      = "an internal error"
+	BADREQUEST         = "bad request body"
+	NOTFOUND           = "not found"
+	NOFOUNDENDPOINT    = "not found sd endpoint, please retry"
+	MODELUPDATEFCERROR = "model update fc error"
 )
 
 // model type
@@ -65,4 +72,7 @@ const (
 	HTTP_PUT             = "PUT"
 	AUTH_TYPE            = "anonymous"
 	MODEL_REFRESH_SIGNAL = "MODEL_REFRESH_SIGNAL"
+	MODEL_SD             = "SD_MODEL"
+	MODEL_SD_VAE         = "SD_VAE"
+	SD_START_PARAMS      = "EXTRA_ARGS"
 )

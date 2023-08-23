@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
+	"log"
 	"testing"
 )
 
@@ -14,5 +16,11 @@ func TestRandStr(t *testing.T) {
 func TestHash(t *testing.T) {
 	s := "dddddd"
 	hash := Hash(s)
-	assert.Equal(t, 32, len(hash))
+	log.Println(hash)
+	assert.Equal(t, 64, len(hash))
+}
+
+func TestTimestampMS(t *testing.T) {
+	cur := TimestampMS()
+	assert.Equal(t, len(fmt.Sprintf("%d", cur)), 13)
 }

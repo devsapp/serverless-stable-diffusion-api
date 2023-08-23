@@ -23,11 +23,15 @@ func Hash(s string) string {
 	h := sha256.New()
 	h.Write([]byte(s))
 	bs := h.Sum(nil)
-	return fmt.Sprintf("%x", bs[:16])
+	return fmt.Sprintf("%x", bs[:32])
 }
 
 func TimestampS() int64 {
 	return time.Now().Unix()
+}
+
+func TimestampMS() int64 {
+	return time.Now().UnixNano() / 1e6
 }
 
 func String(s string) *string {

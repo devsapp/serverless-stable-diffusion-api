@@ -81,6 +81,9 @@ func (o *OtsStore) Get(key string, columns []string) (map[string]interface{}, er
 		return nil, err
 	}
 	columnMap := resp.GetColumnMap()
+	if len(columnMap.Columns) == 0 {
+		return nil, nil
+	}
 	ret := make(map[string]interface{})
 	for key, items := range columnMap.Columns {
 		ret[key] = items[0].Value
