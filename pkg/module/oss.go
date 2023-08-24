@@ -2,8 +2,10 @@ package module
 
 import (
 	"bytes"
+	"encoding/base64"
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
+	"io/ioutil"
 )
 
 // OssGlobal oss manager
@@ -47,4 +49,20 @@ func (o *OssManager) DownloadFile(ossKey, localFile string) error {
 // DeleteFile delete file from oss
 func (o *OssManager) DeleteFile(ossKey string) error {
 	return o.bucket.DeleteObject(ossKey)
+}
+
+// DownloadFileToBase64 Download the object into ReadCloser(). The body needs to be closed
+func (o *OssManager) DownloadFileToBase64(ossKey string) (string, error) {
+	body, err := o.bucket.GetObject(ossKey)
+	if err != nil {
+		return "", err
+	}
+
+	data, err := ioutil.ReadAll(body)
+	body.Close()
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(data), nil
 }

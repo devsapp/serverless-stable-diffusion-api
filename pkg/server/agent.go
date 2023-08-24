@@ -40,6 +40,11 @@ func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, 
 	// init handler
 	agentHandler := handler.NewAgentHandler(taskDataStore, modelDataStore, configDataStore, listenTask)
 
+	// update sd config.json
+	if err := module.UpdateSdConfig(); err != nil {
+		log.Fatal("sd config update fail")
+	}
+
 	// init router
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())

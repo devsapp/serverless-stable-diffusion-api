@@ -17,6 +17,8 @@ import (
 	"strings"
 )
 
+const DEFAULT_USER = "default"
+
 type ProxyHandler struct {
 	userStore   datastore.Datastore
 	taskStore   datastore.Datastore
@@ -43,12 +45,18 @@ func (p *ProxyHandler) Login(c *gin.Context) {
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
 		return
 	}
-	token, ok := module.UserManagerGlobal.VerifyUserValid(request.UserName, request.Password)
+	token, expired, ok := module.UserManagerGlobal.VerifyUserValid(request.UserName, request.Password)
 	if !ok {
 		c.JSON(http.StatusGone, models.UserLoginResponse{
 			Message: utils.String("login fail"),
 		})
 	} else {
+		// update db
+		p.userStore.Update(request.UserName, map[string]interface{}{
+			datastore.KUserSession:          token,
+			datastore.KUserSessionValidTime: fmt.Sprintf("%d", expired),
+			datastore.KUserModifyTime:       fmt.Sprintf("%d", utils.TimestampS()),
+		})
 		c.JSON(http.StatusOK, models.UserLoginResponse{
 			UserName: request.UserName,
 			Token:    token,
@@ -144,9 +152,13 @@ func (p *ProxyHandler) RegisterModel(c *gin.Context) {
 // (DELETE /models/{model_name})
 func (p *ProxyHandler) DeleteModel(c *gin.Context, modelName string) {
 	// get local file path
-	data, err := p.modelStore.Get(modelName, []string{datastore.KModelLocalPath})
+	data, err := p.modelStore.Get(modelName, []string{datastore.KModelLocalPath, datastore.KModelStatus})
 	if err != nil {
 		handleError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if data == nil || len(data) == 0 || data[datastore.KModelStatus] == config.MODEL_DELETE {
+		handleError(c, http.StatusInternalServerError, "model not exist")
 		return
 	}
 	localFile := data[datastore.KModelLocalPath].(string)
@@ -234,7 +246,7 @@ func (p *ProxyHandler) UpdateModel(c *gin.Context, modelName string) {
 		datastore.KModelType:       request.Type,
 		datastore.KModelOssPath:    request.OssPath,
 		datastore.KModelEtag:       request.Etag,
-		datastore.KModelStatus:     getModelsStatus(request.Status),
+		datastore.KModelStatus:     getModelsStatus(request.Type),
 		datastore.KModelModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
 	}
 	if err := p.modelStore.Update(modelName, data); err != nil {
@@ -268,8 +280,12 @@ func (p *ProxyHandler) GetTaskProgress(c *gin.Context, taskId string) {
 func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 	username := c.GetHeader(userKey)
 	if username == "" {
-		handleError(c, http.StatusBadRequest, config.BADREQUEST)
-		return
+		if config.ConfigGlobal.EnableLogin() {
+			handleError(c, http.StatusBadRequest, config.BADREQUEST)
+			return
+		} else {
+			username = DEFAULT_USER
+		}
 	}
 	request := new(models.Txt2ImgJSONRequestBody)
 	if err := getBindResult(c, request); err != nil {
@@ -278,12 +294,12 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 	}
 	// init taskId
 	taskId := utils.RandStr(taskIdLength)
-
-	// check request valid: sdModel and sdVae exist
-	if existed := p.checkModelExist(request.StableDiffusionModel, request.SdVae); !existed {
-		handleError(c, http.StatusNotFound, "model not found, please check request")
-		return
-	}
+	log.Println("taskid:", taskId)
+	//// check request valid: sdModel and sdVae exist
+	//if existed := p.checkModelExist(request.StableDiffusionModel, request.SdVae); !existed {
+	//	handleError(c, http.StatusNotFound, "model not found, please check request")
+	//	return
+	//}
 	// write db
 	if err := p.taskStore.Put(taskId, map[string]interface{}{
 		datastore.KTaskIdColumnName: taskId,
@@ -304,6 +320,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 	sdModel := request.StableDiffusionModel
 	sdVae := request.SdVae
 	endPoint, err := module.FuncManagerGlobal.GetEndpoint(sdModel, sdVae)
+	endPoint = "http://localhost:8010"
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 			TaskId:  taskId,
@@ -360,8 +377,12 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 func (p *ProxyHandler) Img2Img(c *gin.Context) {
 	username := c.GetHeader(userKey)
 	if username == "" {
-		handleError(c, http.StatusBadRequest, config.BADREQUEST)
-		return
+		if config.ConfigGlobal.EnableLogin() {
+			handleError(c, http.StatusBadRequest, config.BADREQUEST)
+			return
+		} else {
+			username = DEFAULT_USER
+		}
 	}
 	request := new(models.Img2ImgJSONRequestBody)
 	if err := getBindResult(c, request); err != nil {
@@ -453,8 +474,12 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 func (p *ProxyHandler) UpdateOptions(c *gin.Context) {
 	username := c.GetHeader(userKey)
 	if username == "" {
-		handleError(c, http.StatusBadRequest, config.BADREQUEST)
-		return
+		if config.ConfigGlobal.EnableLogin() {
+			handleError(c, http.StatusBadRequest, config.BADREQUEST)
+			return
+		} else {
+			username = DEFAULT_USER
+		}
 	}
 	request := new(models.OptionRequest)
 	if err := getBindResult(c, request); err != nil {
@@ -468,7 +493,7 @@ func (p *ProxyHandler) UpdateOptions(c *gin.Context) {
 	}
 	version := fmt.Sprintf("%d", utils.TimestampS())
 	key := fmt.Sprintf("%s_%s", username, version)
-	if err := p.configStore.Update(key, map[string]interface{}{
+	if err := p.configStore.Put(key, map[string]interface{}{
 		datastore.KConfigVal:      string(configStr),
 		datastore.KConfigVer:      version,
 		datastore.KUserModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
@@ -480,6 +505,18 @@ func (p *ProxyHandler) UpdateOptions(c *gin.Context) {
 		datastore.KUserConfigVer:  version,
 		datastore.KUserModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
 	}); err != nil {
+		if !config.ConfigGlobal.EnableLogin() {
+			// if username not existed add user
+			if err = p.userStore.Put(username, map[string]interface{}{
+				datastore.KUserConfigVer:  version,
+				datastore.KUserCreateTime: fmt.Sprintf("%d", utils.TimestampS()),
+				datastore.KUserModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+			}); err == nil {
+				c.JSON(http.StatusOK, gin.H{"message": "success"})
+				return
+			}
+
+		}
 		handleError(c, http.StatusInternalServerError, "update db error")
 		return
 	}
@@ -566,12 +603,44 @@ func getModelsStatus(modelType string) string {
 
 func ApiAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString := c.Request.Header.Get("Token")
-		userName, ok := module.UserManagerGlobal.VerifySessionValid(tokenString)
-		if !ok {
-			c.JSON(http.StatusGone, gin.H{"message": "please login first or login expired"})
-			c.Abort()
+		path := c.Request.URL.Path
+		if path != "/login" {
+			tokenString := c.Request.Header.Get("Token")
+			userName, ok := module.UserManagerGlobal.VerifySessionValid(tokenString)
+			if !ok {
+				c.JSON(http.StatusGone, gin.H{"message": "please login first or login expired"})
+				c.Abort()
+			}
+			c.Request.Header.Set("userName", userName)
 		}
-		c.Request.Header.Set("userName", userName)
 	}
 }
+
+//// deal ossImg to base64
+//func preprocessRequest(req any) {
+//	switch req.(type) {
+//	case *models.Txt2ImgJSONRequestBody:
+//		request := req.(*models.Txt2ImgJSONRequestBody)
+//		if request.AlwaysonScripts != nil {
+//			controlNet, ok := (*request.AlwaysonScripts)["controlnet"]
+//			if !ok {
+//				return
+//			}
+//			args, ok := controlNet.(map[string]interface{})["args"]
+//			if !ok {
+//				return
+//			}
+//			for i, item := range args.([]interface{}) {
+//				if val, ok := item.(map[string]interface{})["image"]; ok {
+//					inputImage := val.(string)
+//					// oss image to base64
+//					if base64Str, err := module.OssGlobal.DownloadFileToBase64(inputImage); err == nil {
+//						args.([]interface{})[i].(map[string]interface{})["image"] = base64Str
+//					}
+//				}
+//			}
+//			(*request.AlwaysonScripts)["controlnet"] = args
+//		}
+//	case *models.Img2ImgJSONRequestBody:
+//	}
+//}
