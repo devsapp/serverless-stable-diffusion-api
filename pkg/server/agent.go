@@ -2,16 +2,20 @@ package server
 
 import (
 	"context"
+	"errors"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/handler"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/module"
+	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net"
 	"net/http"
 	"time"
 )
+
+const SD_START_TIMEOUT = 10 * 60 * 1000 // 10min
 
 type AgentServer struct {
 	srv             *http.Server
@@ -49,6 +53,12 @@ func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, 
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
 	handler.RegisterHandlers(router, agentHandler)
+
+	// make sure sd started
+	if !utils.PortCheck(config.ConfigGlobal.GetSDPort(), SD_START_TIMEOUT) {
+		log.Fatal("sd not start after 10min")
+		return nil, errors.New("sd not start after 60s")
+	}
 
 	return &AgentServer{
 		srv: &http.Server{

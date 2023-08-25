@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"math/rand"
+	"net"
 	"time"
 )
 
@@ -48,4 +49,26 @@ func Float32(v float32) *float32 {
 
 func Bool(v bool) *bool {
 	return &v
+}
+
+// PortCheck port usable
+func PortCheck(port string, timeout int) bool {
+	if port == "" {
+		return false
+	}
+	timeoutChan := time.After(time.Duration(timeout) * time.Millisecond)
+	for {
+		select {
+		case <-timeoutChan:
+			return false
+		default:
+			conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%s", port),
+				time.Duration(10)*time.Millisecond)
+			if err == nil && conn != nil {
+				conn.Close()
+				return true
+			}
+		}
+	}
+	return false
 }

@@ -320,7 +320,6 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 	sdModel := request.StableDiffusionModel
 	sdVae := request.SdVae
 	endPoint, err := module.FuncManagerGlobal.GetEndpoint(sdModel, sdVae)
-	endPoint = "http://localhost:8010"
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 			TaskId:  taskId,
@@ -359,6 +358,11 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 		return nil
 	})
 	if err != nil || resp.StatusCode != 200 {
+		if err != nil {
+			log.Println(err.Error())
+		} else {
+			log.Println(resp)
+		}
 		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 			TaskId:  taskId,
 			Status:  config.TASK_FAILED,

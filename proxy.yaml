@@ -7,7 +7,7 @@ otsInstanceName: sd-api-t
 otsMaxVersion: 1
 otsTimeToAlive: -1
 # FC
-image: registry.cn-beijing.aliyuncs.com/aliyun-fc/fc-stable-diffusion:anime-v2
+image: xxxx
 caPort: 7860
 CPU: 8
 diskSize: 512

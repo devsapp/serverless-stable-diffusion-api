@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"io/ioutil"
+	"log"
 	"os"
 )
 
@@ -21,22 +22,27 @@ func UpdateSdConfig() error {
 	}
 	// get sd config
 	configPath := fmt.Sprintf("%s/%s", config.ConfigGlobal.SdPath, SD_CONFIG)
+	log.Println(configPath)
 	fd, err := os.Open(configPath)
-	defer fd.Close()
 	if err != nil {
 		return err
 	}
 	data, _ := ioutil.ReadAll(fd)
+	fd.Close()
 	var m map[string]interface{}
 	if err := json.Unmarshal(data, &m); err != nil {
 		return err
 	}
 	m["sd_model_checkpoint"] = sdModel
 	m["sd_vae"] = sdVae
+	m["sd_checkpoint_hash"] = ""
 	output, err := json.MarshalIndent(m, "", "    ")
 	if err != nil {
 		return err
 	}
-	fd.WriteString(string(output))
+	fdOut, err := os.OpenFile(configPath, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0775)
+	defer fdOut.Close()
+
+	fdOut.WriteString(string(output))
 	return nil
 }

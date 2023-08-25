@@ -5,6 +5,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
+	"strings"
 )
 
 var ConfigGlobal *Config
@@ -63,6 +64,14 @@ type Config struct {
 
 func (c *Config) EnableLogin() bool {
 	return c.LoginSwitch == "on"
+}
+
+func (c *Config) GetSDPort() string {
+	items := strings.Split(c.SdUrlPrefix, ":")
+	if len(items) == 3 {
+		return items[2]
+	}
+	return ""
 }
 
 func (c *Config) EnableProgressImg() bool {
