@@ -16,7 +16,7 @@ const (
 	TASK_QUEUE      = "waiting"
 	TASK_FINISH     = "succeeded"
 
-	HTTPTIMEOUT = 60 * time.Second
+	HTTPTIMEOUT = 5 * 60 * time.Second
 
 	// cancel val
 	CANCEL_INIT  = 0

@@ -175,6 +175,7 @@ func (a *AgentHandler) predictTask(user, taskId, path string, body []byte) error
 		log.Println(err.Error())
 		return err
 	}
+	result.Parameters["alwayson_scripts"] = ""
 	params, err := json.Marshal(result.Parameters)
 	if err != nil {
 		log.Println("json:", err.Error())
@@ -249,6 +250,8 @@ func (a *AgentHandler) taskProgress(ctx context.Context, user, taskId string) er
 					return fmt.Errorf("output image err=%s", err.Error())
 				}
 				result.CurrentImage = ossPath
+			} else {
+				result.CurrentImage = ""
 			}
 			// write to db, struct to json str
 			if resultStr, err := json.Marshal(result); err == nil {

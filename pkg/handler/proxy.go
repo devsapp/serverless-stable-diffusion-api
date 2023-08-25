@@ -354,7 +354,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 				return version.(string)
 			}
 		}())
-		req.Header.Add(FcAsyncKey, "Async")
+		//req.Header.Add(FcAsyncKey, "Async")
 		return nil
 	})
 	if err != nil || resp.StatusCode != 200 {
