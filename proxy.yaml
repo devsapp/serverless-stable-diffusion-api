@@ -18,3 +18,4 @@ timeout: 600
 gpuMemorySize: 16384
 extraArgs: --api
 sessionExpire: 3600
+loginSwitch: off

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"io/ioutil"
-	"log"
 	"os"
 )
 
@@ -22,7 +21,6 @@ func UpdateSdConfig() error {
 	}
 	// get sd config
 	configPath := fmt.Sprintf("%s/%s", config.ConfigGlobal.SdPath, SD_CONFIG)
-	log.Println(configPath)
 	fd, err := os.Open(configPath)
 	if err != nil {
 		return err

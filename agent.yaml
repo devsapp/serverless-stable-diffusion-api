@@ -6,6 +6,6 @@ ossEndpoint: oss-cn-beijing.aliyuncs.com
 bucket: sd-api-t
 dbSqlite: ./sqlite3
 listenInterval: 1
-sdUrlPrefix: XXXXX
+sdUrlPrefix: http://localhost:7861
 progressImageOutputSwitch: off
 sdPath: ./stable-diffusion-webui

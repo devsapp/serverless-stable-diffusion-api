@@ -13,12 +13,15 @@ import (
 )
 
 const (
-	taskIdLength = 10
-	userKey      = "username"
-	taskKey      = "taskId"
-	FcAsyncKey   = "X-Fc-Invocation-Type"
-	versionKey   = "version"
-	requestOk    = 200
+	taskIdLength     = 10
+	userKey          = "username"
+	requestType      = "Request-Type"
+	taskKey          = "taskId"
+	FcAsyncKey       = "X-Fc-Invocation-Type"
+	versionKey       = "version"
+	requestOk        = 200
+	asyncSuccessCode = 202
+	syncSuccessCode  = 200
 )
 
 func getBindResult(c *gin.Context, in interface{}) error {

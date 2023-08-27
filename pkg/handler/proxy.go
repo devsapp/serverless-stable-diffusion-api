@@ -279,6 +279,7 @@ func (p *ProxyHandler) GetTaskProgress(c *gin.Context, taskId string) {
 // (POST /txt2img)
 func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 	username := c.GetHeader(userKey)
+	invokeType := c.GetHeader(requestType)
 	if username == "" {
 		if config.ConfigGlobal.EnableLogin() {
 			handleError(c, http.StatusBadRequest, config.BADREQUEST)
@@ -296,10 +297,10 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 	taskId := utils.RandStr(taskIdLength)
 	log.Println("taskid:", taskId)
 	//// check request valid: sdModel and sdVae exist
-	//if existed := p.checkModelExist(request.StableDiffusionModel, request.SdVae); !existed {
-	//	handleError(c, http.StatusNotFound, "model not found, please check request")
-	//	return
-	//}
+	if existed := p.checkModelExist(request.StableDiffusionModel, request.SdVae); !existed {
+		handleError(c, http.StatusNotFound, "model not found, please check request")
+		return
+	}
 	// write db
 	if err := p.taskStore.Put(taskId, map[string]interface{}{
 		datastore.KTaskIdColumnName: taskId,
@@ -354,10 +355,12 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 				return version.(string)
 			}
 		}())
-		//req.Header.Add(FcAsyncKey, "Async")
+		if isAsync(invokeType) {
+			req.Header.Add(FcAsyncKey, "Async")
+		}
 		return nil
 	})
-	if err != nil || resp.StatusCode != 200 {
+	if err != nil || (resp.StatusCode != syncSuccessCode && resp.StatusCode != asyncSuccessCode) {
 		if err != nil {
 			log.Println(err.Error())
 		} else {
@@ -371,7 +374,15 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusOK, models.SubmitTaskResponse{
 			TaskId: taskId,
-			Status: config.TASK_QUEUE,
+			Status: func() string {
+				if resp.StatusCode == syncSuccessCode {
+					return config.TASK_FINISH
+				}
+				if resp.StatusCode == asyncSuccessCode {
+					return config.TASK_QUEUE
+				}
+				return config.TASK_FAILED
+			}(),
 		})
 	}
 }
@@ -380,6 +391,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 // (POST /img2img)
 func (p *ProxyHandler) Img2Img(c *gin.Context) {
 	username := c.GetHeader(userKey)
+	invokeType := c.GetHeader(requestType)
 	if username == "" {
 		if config.ConfigGlobal.EnableLogin() {
 			handleError(c, http.StatusBadRequest, config.BADREQUEST)
@@ -456,10 +468,12 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 				return version.(string)
 			}
 		}())
-		req.Header.Add(FcAsyncKey, "Async")
+		if isAsync(invokeType) {
+			req.Header.Add(FcAsyncKey, "Async")
+		}
 		return nil
 	})
-	if err != nil || resp.StatusCode != 200 {
+	if err != nil || (resp.StatusCode != syncSuccessCode && resp.StatusCode != asyncSuccessCode) {
 		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 			TaskId:  taskId,
 			Status:  config.TASK_FAILED,
@@ -468,7 +482,15 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusOK, models.SubmitTaskResponse{
 			TaskId: taskId,
-			Status: config.TASK_QUEUE,
+			Status: func() string {
+				if resp.StatusCode == syncSuccessCode {
+					return config.TASK_FINISH
+				}
+				if resp.StatusCode == asyncSuccessCode {
+					return config.TASK_QUEUE
+				}
+				return config.TASK_FAILED
+			}(),
 		})
 	}
 }
@@ -540,7 +562,7 @@ func (p *ProxyHandler) getTaskResult(taskId string) (*models.TaskResultResponse,
 	}
 
 	// check predict code
-	if data[datastore.KTaskCode].(int64) != 200 {
+	if data[datastore.KTaskCode].(int64) != requestOk {
 		result.Message = utils.String("predict error")
 	}
 	// images
@@ -618,6 +640,13 @@ func ApiAuth() gin.HandlerFunc {
 			c.Request.Header.Set("userName", userName)
 		}
 	}
+}
+
+func isAsync(invokeType string) bool {
+	if invokeType == "sync" {
+		return false
+	}
+	return true
 }
 
 //// deal ossImg to base64
