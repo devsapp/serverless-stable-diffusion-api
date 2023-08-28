@@ -291,6 +291,10 @@ func (a *AgentHandler) updateRequest(overrideSettings *map[string]interface{}, u
 	if err != nil {
 		return err
 	}
+	// no user config, user default
+	if data == nil || len(data) == 0 {
+		return nil
+	}
 	val := data[datastore.KConfigVal].(string)
 	var m map[string]interface{}
 	if err := json.Unmarshal([]byte(val), &m); err != nil {
