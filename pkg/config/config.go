@@ -19,6 +19,8 @@ type ConfigYaml struct {
 	// oss
 	OssEndpoint string `yaml:"ossEndpoint"`
 	Bucket      string `yaml:"bucket"`
+	OssPath     string `yaml:"ossPath""`
+	OssMode     string `yaml:"ossMode"`
 
 	// db
 	DbSqlite string `yaml:"dbSqlite"`
@@ -90,6 +92,12 @@ func (c *Config) updateFromEnv() {
 	// oss
 	ossEndpoint := os.Getenv(OSS_ENDPOINT)
 	bucket := os.Getenv(OSS_BUCKET)
+	if path := os.Getenv(OSS_PATH); path != "" {
+		c.OssPath = path
+	}
+	if mode := os.Getenv(OSS_MODE); mode != "" {
+		c.OssMode = mode
+	}
 	if ossEndpoint != "" && bucket != "" {
 		c.OssEndpoint = ossEndpoint
 		c.Bucket = bucket

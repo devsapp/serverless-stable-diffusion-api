@@ -163,7 +163,7 @@ func (p *ProxyHandler) DeleteModel(c *gin.Context, modelName string) {
 	}
 	localFile := data[datastore.KModelLocalPath].(string)
 	// delete nas models
-	if ok, err := deleteLocalModelFile(localFile); !ok {
+	if ok, err := utils.DeleteLocalModelFile(localFile); !ok {
 		handleError(c, http.StatusInternalServerError, err.Error())
 		return
 	}

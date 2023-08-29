@@ -69,6 +69,8 @@ const (
 	OTS_INSTANCE      = "OTS_INSTANCE"
 	OSS_ENDPOINT      = "OSS_ENDPOINT"
 	OSS_BUCKET        = "OSS_BUCKET"
+	OSS_PATH          = "OSS_PATH"
+	OSS_MODE          = "OSS_MODE"
 	LOGINSWITCH       = "LOGIN_SWITCH"
 )
 
