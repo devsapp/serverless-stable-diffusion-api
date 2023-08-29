@@ -8,4 +8,4 @@ dbSqlite: ./sqlite3
 listenInterval: 1
 sdUrlPrefix: http://localhost:7861
 progressImageOutputSwitch: off
-sdPath: ./stable-diffusion-webui
+sdPath: /stable-diffusion-webui
