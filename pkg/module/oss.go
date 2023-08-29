@@ -106,7 +106,7 @@ func (o *OssManagerLocal) UploadFileByByte(ossKey string, body []byte) error {
 }
 func (o *OssManagerLocal) DownloadFile(ossKey, localFile string) error {
 	destFile := fmt.Sprintf("%s/%s", config.ConfigGlobal.OssPath, ossKey)
-	cmd := exec.Command(fmt.Sprintf("cp %s %s", destFile, localFile))
+	cmd := exec.Command("cp", destFile, localFile)
 	err := cmd.Run()
 	return err
 }

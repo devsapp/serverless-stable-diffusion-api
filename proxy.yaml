@@ -1,7 +1,7 @@
 dbSqlite: ./sqlite3
 ossEndpoint: oss-cn-beijing.aliyuncs.com
 bucket: sd-api-t
-ossMode: remote
+ossMode: local
 ossPath: /mnt/oss
 sdPath: /mnt/auto/sd
 otsEndpoint: https://sd-api-test.cn-beijing.ots.aliyuncs.com
