@@ -53,6 +53,7 @@ type ConfigEnv struct {
 	AccountId       string
 	AccessKeyId     string
 	AccessKeySecret string
+	AccessKeyToken  string
 	Region          string
 	ServiceName     string
 }
@@ -115,6 +116,7 @@ func InitConfig(fn string) error {
 	configEnv.AccountId = os.Getenv(ACCOUNT_ID)
 	configEnv.AccessKeyId = os.Getenv(ACCESS_KEY_ID)
 	configEnv.AccessKeySecret = os.Getenv(ACCESS_KEY_SECRET)
+	configEnv.AccessKeyToken = os.Getenv(ACCESS_KET_TOKEN)
 	configEnv.Region = os.Getenv(REGION)
 	configEnv.ServiceName = os.Getenv(SERVICE_NAME)
 	// check valid
