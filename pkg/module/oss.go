@@ -17,7 +17,7 @@ type OssManager struct {
 
 func NewOssManager() error {
 	client, err := oss.New(config.ConfigGlobal.OssEndpoint, config.ConfigGlobal.AccessKeyId,
-		config.ConfigGlobal.AccessKeySecret)
+		config.ConfigGlobal.AccessKeySecret, oss.SecurityToken(config.ConfigGlobal.AccessKeyToken))
 	if err != nil {
 		return err
 	}
