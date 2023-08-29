@@ -287,8 +287,6 @@ func getEnv(sdModel, sdVae string) map[string]*string {
 		config.MODEL_SD:             utils.String(sdModel),
 		config.MODEL_SD_VAE:         utils.String(sdVae),
 		config.MODEL_REFRESH_SIGNAL: utils.String(fmt.Sprintf("%d", utils.TimestampS())), // value = now timestamp
-		config.ACCESS_KEY_ID:        utils.String(config.ConfigGlobal.AccessKeyId),
-		config.ACCESS_KEY_SECRET:    utils.String(config.ConfigGlobal.AccessKeySecret),
 		config.OSS_BUCKET:           utils.String(config.ConfigGlobal.Bucket),
 		config.OSS_ENDPOINT:         utils.String(config.ConfigGlobal.OssEndpoint),
 		config.OTS_INSTANCE:         utils.String(config.ConfigGlobal.OtsInstanceName),
