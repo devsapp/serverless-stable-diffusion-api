@@ -42,7 +42,8 @@ func InitFuncManager(funcStore datastore.Datastore) error {
 	fcEndpoint := fmt.Sprintf("%s.%s.fc.aliyuncs.com", config.ConfigGlobal.AccountId,
 		config.ConfigGlobal.Region)
 	fcClient, err := fc.NewClient(new(openapi.Config).SetAccessKeyId(config.ConfigGlobal.AccessKeyId).
-		SetAccessKeySecret(config.ConfigGlobal.AccessKeySecret).SetProtocol("HTTP").SetEndpoint(fcEndpoint))
+		SetAccessKeySecret(config.ConfigGlobal.AccessKeySecret).SetSecurityToken(config.ConfigGlobal.AccessKeyToken).
+		SetProtocol("HTTP").SetEndpoint(fcEndpoint))
 	if err != nil {
 		return err
 	}
