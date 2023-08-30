@@ -90,6 +90,7 @@ func DeleteLocalModelFile(localFile string) (bool, error) {
 	return false, err
 }
 
+// FileExists check file exist
 func FileExists(path string) bool {
 	_, err := os.Stat(path)
 	if err != nil {
