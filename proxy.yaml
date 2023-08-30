@@ -9,7 +9,7 @@ otsInstanceName: sd-api-t
 otsMaxVersion: 1
 otsTimeToAlive: -1
 # FC
-image: registry.cn-beijing.aliyuncs.com/sd-test-zhonglun/sd-api:agent_v1
+image: xxxx
 caPort: 7860
 CPU: 8
 diskSize: 512
