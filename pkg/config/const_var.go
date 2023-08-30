@@ -87,3 +87,9 @@ const (
 	MODEL_SD_VAE         = "SD_VAE"
 	SD_START_PARAMS      = "EXTRA_ARGS"
 )
+
+// oss mode
+const (
+	LOCAL  = "local"
+	REMOTE = "remote"
+)

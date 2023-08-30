@@ -13,11 +13,6 @@ import (
 	"strings"
 )
 
-const (
-	LOCAL  = "local"
-	REMOTE = "remote"
-)
-
 type OssOp interface {
 	UploadFile(ossKey, localFile string) error
 	UploadFileByByte(ossKey string, body []byte) error
@@ -30,10 +25,10 @@ var OssGlobal OssOp
 
 func NewOssManager() error {
 	switch config.ConfigGlobal.OssMode {
-	case LOCAL:
+	case config.LOCAL:
 		// read/write with disk
 		OssGlobal = new(OssManagerLocal)
-	case REMOTE:
+	case config.REMOTE:
 		client, err := oss.New(config.ConfigGlobal.OssEndpoint, config.ConfigGlobal.AccessKeyId,
 			config.ConfigGlobal.AccessKeySecret, oss.SecurityToken(config.ConfigGlobal.AccessKeyToken))
 		if err != nil {

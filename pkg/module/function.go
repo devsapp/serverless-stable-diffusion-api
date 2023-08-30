@@ -283,14 +283,17 @@ func getFunctionName(key string) string {
 }
 
 func getEnv(sdModel, sdVae string) map[string]*string {
-	return map[string]*string{
+	env := map[string]*string{
 		config.SD_START_PARAMS:      utils.String(config.ConfigGlobal.ExtraArgs),
 		config.MODEL_SD:             utils.String(sdModel),
 		config.MODEL_SD_VAE:         utils.String(sdVae),
 		config.MODEL_REFRESH_SIGNAL: utils.String(fmt.Sprintf("%d", utils.TimestampS())), // value = now timestamp
-		config.OSS_BUCKET:           utils.String(config.ConfigGlobal.Bucket),
-		config.OSS_ENDPOINT:         utils.String(config.ConfigGlobal.OssEndpoint),
 		config.OTS_INSTANCE:         utils.String(config.ConfigGlobal.OtsInstanceName),
 		config.OTS_ENDPOINT:         utils.String(config.ConfigGlobal.OtsEndpoint),
 	}
+	if config.ConfigGlobal.OssMode == config.REMOTE {
+		env[config.OSS_ENDPOINT] = utils.String(config.ConfigGlobal.OssEndpoint)
+		env[config.OSS_BUCKET] = utils.String(config.ConfigGlobal.Bucket)
+	}
+	return env
 }
