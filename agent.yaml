@@ -1,0 +1,11 @@
+otsEndpoint: https://sd-api-test.cn-beijing.ots.aliyuncs.com
+otsInstanceName: sd-api-t
+otsTimeToAlive: -1
+otsMaxVersion: 1
+ossEndpoint: oss-cn-beijing.aliyuncs.com
+bucket: sd-api-t
+dbSqlite: ./sqlite3
+listenInterval: 1
+sdUrlPrefix: http://localhost:7861
+progressImageOutputSwitch: off
+sdPath: ./stable-diffusion-webui

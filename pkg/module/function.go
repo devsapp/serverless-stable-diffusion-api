@@ -87,8 +87,7 @@ func (f *FuncManager) GetEndpoint(sdModel, sdVae string) (string, error) {
 		reTry--
 		time.Sleep(RETRY_INTERVALMS)
 	}
-	return fmt.Sprintf("https://%s.%s-internal.fc.aliyuncs.com/2016-08-15/proxy/%s.LATEST/%s/",
-		config.ConfigGlobal.AccountId, config.ConfigGlobal.Region, config.ConfigGlobal.ServiceName, key), errors.New("not get sd endpoint")
+	return "", errors.New("not get sd endpoint")
 }
 
 // UpdateFunctionEnv update instance env
@@ -192,7 +191,7 @@ func (f *FuncManager) getModelInfo(modelName string) []*SdModels {
 	f.lock.Lock()
 	f.loadFunc()
 	f.lock.Unlock()
-	log.Println(f.modelToInfo)
+
 	// third get from cache
 	f.lock.RLock()
 	info, ok = f.modelToInfo[modelName]
@@ -230,11 +229,11 @@ func (f *FuncManager) createFCFunction(serviceName, functionName string,
 	}
 	// create http triggers
 	httpTriggerRequest := getHttpTrigger()
-	if _, err := f.fcClient.CreateTrigger(&serviceName, &functionName, httpTriggerRequest); err != nil {
+	resp, err := f.fcClient.CreateTrigger(&serviceName, &functionName, httpTriggerRequest)
+	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("https://%s.%s-internal.fc.aliyuncs.com/2016-08-15/proxy/%s.LATEST/%s/",
-		config.ConfigGlobal.AccountId, config.ConfigGlobal.Region, serviceName, functionName), nil
+	return *(resp.Body.UrlInternet), nil
 }
 
 // get create function request
@@ -288,5 +287,11 @@ func getEnv(sdModel, sdVae string) map[string]*string {
 		config.MODEL_SD:             utils.String(sdModel),
 		config.MODEL_SD_VAE:         utils.String(sdVae),
 		config.MODEL_REFRESH_SIGNAL: utils.String(fmt.Sprintf("%d", utils.TimestampS())), // value = now timestamp
+		config.ACCESS_KEY_ID:        utils.String(config.ConfigGlobal.AccessKeyId),
+		config.ACCESS_KEY_SECRET:    utils.String(config.ConfigGlobal.AccessKeySecret),
+		config.OSS_BUCKET:           utils.String(config.ConfigGlobal.Bucket),
+		config.OSS_ENDPOINT:         utils.String(config.ConfigGlobal.OssEndpoint),
+		config.OTS_INSTANCE:         utils.String(config.ConfigGlobal.OtsInstanceName),
+		config.OTS_ENDPOINT:         utils.String(config.ConfigGlobal.OtsEndpoint),
 	}
 }

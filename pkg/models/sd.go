@@ -23,3 +23,23 @@ type State struct {
 	SamplingSteps int    `json:"sampling_steps"`
 	Skipped       bool   `json:"skipped"`
 }
+
+type ControlNet struct {
+	Args []Args `json:"args"`
+}
+type Args struct {
+	ControlMode   int     `json:"control_mode"`
+	Enabled       bool    `json:"enabled"`
+	GuidanceEnd   float64 `json:"guidance_end"`
+	GuidanceStart float64 `json:"guidance_start"`
+	InputImage    string  `json:"image"`
+	Lowvram       bool    `json:"lowvram"`
+	Model         string  `json:"model"`
+	Module        string  `json:"module"`
+	PixelPerfect  bool    `json:"pixel_perfect"`
+	ProcessorRes  int     `json:"processor_res"`
+	ResizeMode    int     `json:"resize_mode"`
+	ThresholdA    int     `json:"threshold_a"`
+	ThresholdB    int     `json:"threshold_b"`
+	Weight        float64 `json:"weight"`
+}

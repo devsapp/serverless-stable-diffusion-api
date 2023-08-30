@@ -57,10 +57,16 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 		return
 	}
 	// update request OverrideSettings
+	if request.OverrideSettings == nil {
+		overrideSettings := make(map[string]interface{})
+		request.OverrideSettings = &overrideSettings
+	}
 	if err := a.updateRequest(request.OverrideSettings, username, configVer); err != nil {
 		handleError(c, http.StatusInternalServerError, "please check config")
 		return
 	}
+	// default OverrideSettingsRestoreAfterwards = true
+	request.OverrideSettingsRestoreAfterwards = utils.Bool(true)
 	// update task status
 	a.taskStore.Update(taskId, map[string]interface{}{
 		datastore.KTaskStatus: config.TASK_INPROGRESS,
@@ -69,7 +75,7 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 	a.listenTask.AddTask(taskId, module.CancelListen, module.CancelEvent)
 	// async progress
 	go func() {
-		if err := a.taskProgress(ctx, taskId); err != nil {
+		if err := a.taskProgress(ctx, username, taskId); err != nil {
 			log.Printf("update task progress error %s", err.Error())
 		}
 	}()
@@ -82,7 +88,7 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 	}
 	// predict task
 	a.predictTask(username, taskId, config.IMG2IMG, body)
-	log.Printf("task=%s predict success, request body=%s", taskId, string(body))
+	//log.Printf("task=%s predict success, request body=%s", taskId, string(body))
 	c.JSON(http.StatusOK, gin.H{
 		"message": "predict task success",
 	})
@@ -107,10 +113,16 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 		return
 	}
 	// update request OverrideSettings
+	if request.OverrideSettings == nil {
+		overrideSettings := make(map[string]interface{})
+		request.OverrideSettings = &overrideSettings
+	}
 	if err := a.updateRequest(request.OverrideSettings, username, configVer); err != nil {
 		handleError(c, http.StatusInternalServerError, "please check config")
 		return
 	}
+	// default OverrideSettingsRestoreAfterwards = true
+	request.OverrideSettingsRestoreAfterwards = utils.Bool(true)
 	// update task status
 	a.taskStore.Update(taskId, map[string]interface{}{
 		datastore.KTaskStatus: config.TASK_INPROGRESS,
@@ -119,7 +131,7 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 	a.listenTask.AddTask(taskId, module.CancelListen, module.CancelEvent)
 	// async progress
 	go func() {
-		if err := a.taskProgress(ctx, taskId); err != nil {
+		if err := a.taskProgress(ctx, username, taskId); err != nil {
 			log.Printf("update task progress error %s", err.Error())
 		}
 	}()
@@ -131,8 +143,11 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 		return
 	}
 	// predict task
-	a.predictTask(username, taskId, config.TXT2IMG, body)
-	log.Printf("task=%s predict success, request body=%s", taskId, string(body))
+	err = a.predictTask(username, taskId, config.TXT2IMG, body)
+	if err != nil {
+		log.Println(err.Error())
+	}
+	//log.Printf("task=%s predict success, request body=%s", taskId, string(body))
 	c.JSON(http.StatusOK, gin.H{
 		"message": "predict task success",
 	})
@@ -155,12 +170,12 @@ func (a *AgentHandler) predictTask(user, taskId, path string, body []byte) error
 	if err != nil {
 		return err
 	}
-
 	var result *models.Txt2ImgResult
 	if err := json.Unmarshal(body, &result); err != nil {
 		log.Println(err.Error())
 		return err
 	}
+	result.Parameters["alwayson_scripts"] = ""
 	params, err := json.Marshal(result.Parameters)
 	if err != nil {
 		log.Println("json:", err.Error())
@@ -169,11 +184,6 @@ func (a *AgentHandler) predictTask(user, taskId, path string, body []byte) error
 	if resp.StatusCode == requestOk {
 		count := len(result.Images)
 		for i := 1; i <= count; i++ {
-			// test image save local
-			//localPngName := fmt.Sprintf("%s%s_%d.png", config.ConfigGlobal.ImageOutputDir, taskId, i)
-			//if err := outputImage(&localPngName, &result.Images[i-1]); err != nil {
-			//	return fmt.Errorf("output image err=%s", err.Error())
-			//}
 			// upload image to oss
 			ossPath := fmt.Sprintf("images/%s/%s_%d.png", user, taskId, i)
 			if err := uploadImages(&ossPath, &result.Images[i-1]); err != nil {
@@ -197,7 +207,7 @@ func (a *AgentHandler) predictTask(user, taskId, path string, body []byte) error
 	return nil
 }
 
-func (a *AgentHandler) taskProgress(ctx context.Context, taskId string) error {
+func (a *AgentHandler) taskProgress(ctx context.Context, user, taskId string) error {
 	var isStart bool
 	notifyDone := false
 	for {
@@ -233,13 +243,15 @@ func (a *AgentHandler) taskProgress(ctx context.Context, taskId string) error {
 		}
 		if result.Progress > 0 {
 			log.Println("progress:", result.Progress)
-			// output to local
-			if result.CurrentImage != "" {
-				pngName := fmt.Sprintf("%s%s_progress.png", config.ConfigGlobal.ImageOutputDir, taskId)
-				if err := outputImage(&pngName, &result.CurrentImage); err != nil {
+			// output to oss
+			if result.CurrentImage != "" && config.ConfigGlobal.EnableProgressImg() {
+				ossPath := fmt.Sprintf("images/%s/%s_progress.png", user, taskId)
+				if err := uploadImages(&ossPath, &result.CurrentImage); err != nil {
 					return fmt.Errorf("output image err=%s", err.Error())
 				}
-				result.CurrentImage = pngName
+				result.CurrentImage = ossPath
+			} else {
+				result.CurrentImage = ""
 			}
 			// write to db, struct to json str
 			if resultStr, err := json.Marshal(result); err == nil {
@@ -279,21 +291,21 @@ func (a *AgentHandler) updateRequest(overrideSettings *map[string]interface{}, u
 	if err != nil {
 		return err
 	}
+	// no user config, user default
+	if data == nil || len(data) == 0 {
+		return nil
+	}
 	val := data[datastore.KConfigVal].(string)
 	var m map[string]interface{}
 	if err := json.Unmarshal([]byte(val), &m); err != nil {
 		return nil
 	}
-	// default override_settings_restore_afterwards = true
 	// remove sd_model_checkpoint and sd_vae
 	delete(*overrideSettings, "sd_model_checkpoint")
 	delete(*overrideSettings, "sd_vae")
-	m["override_settings_restore_afterwards"] = true
 	// priority request > db
 	for k, v := range m {
-		if _, ok := (*overrideSettings)[k]; ok {
-			continue
-		} else {
+		if _, ok := (*overrideSettings)[k]; !ok {
 			(*overrideSettings)[k] = v
 		}
 	}

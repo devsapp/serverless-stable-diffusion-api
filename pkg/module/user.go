@@ -9,7 +9,7 @@ import (
 	"sync"
 )
 
-const SESSIONLENGTH = 10
+const SESSIONLENGTH = 64
 
 var UserManagerGlobal *userManager
 
@@ -54,22 +54,23 @@ func (u *userManager) loadUserFromDb() error {
 }
 
 // VerifyUserValid verify user valid
-func (u *userManager) VerifyUserValid(userName, password string) (string, bool) {
+func (u *userManager) VerifyUserValid(userName, password string) (string, int, bool) {
 	data, err := u.userStore.Get(userName, []string{datastore.KUserName, datastore.KUserPassword})
 	if err != nil || data == nil || len(data) == 0 {
-		return "", false
+		return "", 0, false
 	}
 	passwordDb := data[datastore.KUserPassword].(string)
 	if password == passwordDb {
 		session := utils.RandStr(SESSIONLENGTH)
+		expired := int(utils.TimestampS() + config.ConfigGlobal.SessionExpire)
 		u.cache.Store(session, &userSession{
 			userName: userName,
 			session:  session,
-			expired:  int(utils.TimestampS() + config.ConfigGlobal.SessionExpire),
+			expired:  expired,
 		})
-		return session, true
+		return session, expired, true
 	}
-	return "", false
+	return "", 0, false
 }
 
 func (u *userManager) VerifySessionValid(session string) (string, bool) {
@@ -86,7 +87,7 @@ func (u *userManager) VerifySessionValid(session string) (string, bool) {
 				// Renewal expired
 				info.expired = int(curTime + config.ConfigGlobal.SessionExpire)
 				u.userStore.Update(info.userName, map[string]interface{}{
-					datastore.KUserSessionValidTime: info.expired,
+					datastore.KUserSessionValidTime: fmt.Sprintf("%d", info.expired),
 					datastore.KUserModifyTime:       fmt.Sprintf("%d", utils.TimestampS()),
 				})
 				return info.userName, true

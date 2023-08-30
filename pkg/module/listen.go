@@ -24,6 +24,12 @@ type modelChangeSignal struct {
 	modelType  string
 }
 
+type modelItem struct {
+	ossPath string
+	etag    string
+	status  string
+}
+
 type DbTaskItem struct {
 	listenType ListenType
 	callBack   CallBack
@@ -79,17 +85,33 @@ func (l *ListenDbTask) init() {
 
 // listen model task
 func (l *ListenDbTask) modelTask(item *DbTaskItem) {
-	curVal := item.curVal.(*map[string]string)
-	datas, err := l.modelStore.ListAll([]string{datastore.KModelName, datastore.KModelEtag, datastore.KModelType})
+	curVal := item.curVal.(*map[string]*modelItem)
+	datas, err := l.modelStore.ListAll([]string{datastore.KModelName, datastore.KModelEtag,
+		datastore.KModelType, datastore.KModelStatus, datastore.KModelOssPath})
 	if err != nil {
 		log.Fatal("listen models change fail")
 	}
 	for _, data := range datas {
+		status := data[datastore.KModelStatus].(string)
 		modelName := data[datastore.KModelName].(string)
 		modelEtag := data[datastore.KModelEtag].(string)
 		modelType := data[datastore.KModelType].(string)
-		if val, existed := (*curVal)[modelName]; !existed || val != modelEtag {
-			(*curVal)[modelName] = modelEtag
+		ossPath := data[datastore.KModelOssPath].(string)
+		if status == config.MODEL_DELETE {
+			(*curVal)[modelName] = &modelItem{
+				ossPath: ossPath,
+				etag:    modelEtag,
+				status:  status,
+			}
+			continue
+		}
+		if val, existed := (*curVal)[modelName]; !existed || val.etag != modelEtag ||
+			val.ossPath != ossPath || (val.status == config.MODEL_DELETE && val.status != status) {
+			(*curVal)[modelName] = &modelItem{
+				ossPath: ossPath,
+				etag:    modelEtag,
+				status:  status,
+			}
 			item.callBack(&modelChangeSignal{l.modelStore, modelName, modelType})
 		}
 	}
@@ -110,7 +132,7 @@ func (l *ListenDbTask) cancelTask(taskId string, item *DbTaskItem) {
 	}
 	// cancel val == 1
 	cancelVal := ret[datastore.KTaskCancel].(int64)
-	if cancelVal == int64(1) {
+	if cancelVal == int64(config.CANCEL_VALID) {
 		item.callBack(nil)
 		l.tasks.Delete(taskId)
 		return
@@ -120,17 +142,22 @@ func (l *ListenDbTask) cancelTask(taskId string, item *DbTaskItem) {
 
 // AddTask add listen task
 func (l *ListenDbTask) AddTask(key string, listenType ListenType, callBack CallBack) {
-	curVal := make(map[string]string)
+	curVal := make(map[string]*modelItem)
 	if listenType == ModelListen {
 		// model task need init curVal
-		datas, err := l.modelStore.ListAll([]string{datastore.KModelName, datastore.KModelEtag})
+		datas, err := l.modelStore.ListAll([]string{datastore.KModelName, datastore.KModelEtag,
+			datastore.KModelStatus, datastore.KModelOssPath})
 		if err != nil {
 			log.Fatal("listen models change fail")
 		}
 		for _, data := range datas {
 			modelName := data[datastore.KModelName].(string)
 			modelEtag := data[datastore.KModelEtag].(string)
-			curVal[modelName] = modelEtag
+			curVal[modelName] = &modelItem{
+				ossPath: data[datastore.KModelOssPath].(string),
+				etag:    modelEtag,
+				status:  data[datastore.KModelStatus].(string),
+			}
 		}
 	}
 	l.tasks.Store(key, &DbTaskItem{

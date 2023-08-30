@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/handler"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/module"
@@ -51,7 +52,11 @@ func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, 
 	// init router
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
-	router.Use(handler.ApiAuth())
+
+	// auth permission check
+	if config.ConfigGlobal.EnableLogin() {
+		router.Use(handler.ApiAuth())
+	}
 	handler.RegisterHandlers(router, proxyHandler)
 
 	return &ProxyServer{

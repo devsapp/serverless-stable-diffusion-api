@@ -13,12 +13,15 @@ import (
 )
 
 const (
-	taskIdLength = 10
-	userKey      = "username"
-	taskKey      = "taskId"
-	FcAsyncKey   = "X-Fc-Invocation-Type"
-	versionKey   = "version"
-	requestOk    = 200
+	taskIdLength     = 10
+	userKey          = "username"
+	requestType      = "Request-Type"
+	taskKey          = "taskId"
+	FcAsyncKey       = "X-Fc-Invocation-Type"
+	versionKey       = "version"
+	requestOk        = 200
+	asyncSuccessCode = 202
+	syncSuccessCode  = 200
 )
 
 func getBindResult(c *gin.Context, in interface{}) error {
@@ -43,13 +46,13 @@ func downloadModelsFromOss(modelsType, ossPath, modelName string) (string, error
 	path := ""
 	switch modelsType {
 	case config.SD_MODEL:
-		path = fmt.Sprintf("%s/%s/%s", config.ConfigGlobal.ModelsNasPath, "Stable-diffusion", modelName)
+		path = fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "Stable-diffusion", modelName)
 	case config.SD_VAE:
-		path = fmt.Sprintf("%s/%s/%s", config.ConfigGlobal.ModelsNasPath, "VAE", modelName)
+		path = fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "VAE", modelName)
 	case config.LORA_MODEL:
-		path = fmt.Sprintf("%s/%s/%s", config.ConfigGlobal.ModelsNasPath, "Lora", modelName)
+		path = fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "Lora", modelName)
 	case config.CONTORLNET_MODEL:
-		path = fmt.Sprintf("%s/%s/%s", config.ConfigGlobal.ModelsNasPath, "ControlNet", modelName)
+		path = fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "ControlNet", modelName)
 	default:
 		return "", fmt.Errorf("modeltype: %s not support", modelsType)
 	}

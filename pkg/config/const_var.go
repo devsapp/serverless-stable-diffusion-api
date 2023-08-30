@@ -16,7 +16,7 @@ const (
 	TASK_QUEUE      = "waiting"
 	TASK_FINISH     = "succeeded"
 
-	HTTPTIMEOUT = 60 * time.Second
+	HTTPTIMEOUT = 5 * 60 * time.Second
 
 	// cancel val
 	CANCEL_INIT  = 0
@@ -57,10 +57,18 @@ const (
 	COLPK = "PK"
 )
 
+// env
 const (
 	ACCOUNT_ID        = "FC_ACCOUNT_ID"
 	ACCESS_KEY_ID     = "ALIBABA_CLOUD_ACCESS_KEY_ID"
 	ACCESS_KEY_SECRET = "ALIBABA_CLOUD_ACCESS_KEY_SECRET"
+	REGION            = "FC_REGION"
+	SERVICE_NAME      = "FC_SERVICE_NAME"
+	OTS_ENDPOINT      = "OTS_ENDPOINT"
+	OTS_INSTANCE      = "OTS_INSTANCE"
+	OSS_ENDPOINT      = "OSS_ENDPOINT"
+	OSS_BUCKET        = "OSS_BUCKET"
+	LOGINSWITCH       = "LOGIN_SWITCH"
 )
 
 // function http trigger
