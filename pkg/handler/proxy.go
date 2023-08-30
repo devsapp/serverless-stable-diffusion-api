@@ -163,7 +163,7 @@ func (p *ProxyHandler) DeleteModel(c *gin.Context, modelName string) {
 	}
 	localFile := data[datastore.KModelLocalPath].(string)
 	// delete nas models
-	if ok, err := deleteLocalModelFile(localFile); !ok {
+	if ok, err := utils.DeleteLocalModelFile(localFile); !ok {
 		handleError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -585,6 +585,13 @@ func (p *ProxyHandler) getTaskResult(taskId string) (*models.TaskResultResponse,
 
 func (p *ProxyHandler) checkModelExist(sdModel, sdVae string) bool {
 	models := []string{sdModel}
+	// check local existed
+	sdModelPath := fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "Stable-diffusion", sdModel)
+	sdVaePath := fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "VAE", sdVae)
+	if utils.FileExists(sdModelPath) && utils.FileExists(sdVaePath) {
+		return true
+	}
+	// check remote db existed
 	// remove sdVae = None || Automatic
 	if sdVae != "None" && sdVae != "Automatic" {
 		models = append(models, sdVae)

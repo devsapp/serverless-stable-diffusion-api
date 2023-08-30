@@ -150,7 +150,6 @@ func NewOtsConfig(tableName string) *Config {
 			KUserPassword:         "TEXT",
 		}
 		config.PrimaryKeyColumnName = KUserName
-		config.MaxVersion = 10
 	case KConfigTableName:
 		config.ColumnConfig = map[string]string{
 			KConfigKey:        "TEXT",

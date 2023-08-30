@@ -1,13 +1,15 @@
 dbSqlite: ./sqlite3
 ossEndpoint: oss-cn-beijing.aliyuncs.com
 bucket: sd-api-t
+ossMode: local
+ossPath: /mnt/oss
 sdPath: /mnt/auto/sd
 otsEndpoint: https://sd-api-test.cn-beijing.ots.aliyuncs.com
 otsInstanceName: sd-api-t
 otsMaxVersion: 1
 otsTimeToAlive: -1
 # FC
-image: xxxx
+image: registry.cn-beijing.aliyuncs.com/sd-test-zhonglun/sd-api:agent_v1
 caPort: 7860
 CPU: 8
 diskSize: 512
