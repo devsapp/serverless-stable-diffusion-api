@@ -19,6 +19,8 @@ type ConfigYaml struct {
 	// oss
 	OssEndpoint string `yaml:"ossEndpoint"`
 	Bucket      string `yaml:"bucket"`
+	OssPath     string `yaml:"ossPath""`
+	OssMode     string `yaml:"ossMode"`
 
 	// db
 	DbSqlite string `yaml:"dbSqlite"`
@@ -53,6 +55,7 @@ type ConfigEnv struct {
 	AccountId       string
 	AccessKeyId     string
 	AccessKeySecret string
+	AccessKeyToken  string
 	Region          string
 	ServiceName     string
 }
@@ -89,6 +92,12 @@ func (c *Config) updateFromEnv() {
 	// oss
 	ossEndpoint := os.Getenv(OSS_ENDPOINT)
 	bucket := os.Getenv(OSS_BUCKET)
+	if path := os.Getenv(OSS_PATH); path != "" {
+		c.OssPath = path
+	}
+	if mode := os.Getenv(OSS_MODE); mode != "" {
+		c.OssMode = mode
+	}
 	if ossEndpoint != "" && bucket != "" {
 		c.OssEndpoint = ossEndpoint
 		c.Bucket = bucket
@@ -115,6 +124,7 @@ func InitConfig(fn string) error {
 	configEnv.AccountId = os.Getenv(ACCOUNT_ID)
 	configEnv.AccessKeyId = os.Getenv(ACCESS_KEY_ID)
 	configEnv.AccessKeySecret = os.Getenv(ACCESS_KEY_SECRET)
+	configEnv.AccessKeyToken = os.Getenv(ACCESS_KET_TOKEN)
 	configEnv.Region = os.Getenv(REGION)
 	configEnv.ServiceName = os.Getenv(SERVICE_NAME)
 	// check valid

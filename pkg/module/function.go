@@ -42,7 +42,8 @@ func InitFuncManager(funcStore datastore.Datastore) error {
 	fcEndpoint := fmt.Sprintf("%s.%s.fc.aliyuncs.com", config.ConfigGlobal.AccountId,
 		config.ConfigGlobal.Region)
 	fcClient, err := fc.NewClient(new(openapi.Config).SetAccessKeyId(config.ConfigGlobal.AccessKeyId).
-		SetAccessKeySecret(config.ConfigGlobal.AccessKeySecret).SetProtocol("HTTP").SetEndpoint(fcEndpoint))
+		SetAccessKeySecret(config.ConfigGlobal.AccessKeySecret).SetSecurityToken(config.ConfigGlobal.AccessKeyToken).
+		SetProtocol("HTTP").SetEndpoint(fcEndpoint))
 	if err != nil {
 		return err
 	}
@@ -282,16 +283,17 @@ func getFunctionName(key string) string {
 }
 
 func getEnv(sdModel, sdVae string) map[string]*string {
-	return map[string]*string{
+	env := map[string]*string{
 		config.SD_START_PARAMS:      utils.String(config.ConfigGlobal.ExtraArgs),
 		config.MODEL_SD:             utils.String(sdModel),
 		config.MODEL_SD_VAE:         utils.String(sdVae),
 		config.MODEL_REFRESH_SIGNAL: utils.String(fmt.Sprintf("%d", utils.TimestampS())), // value = now timestamp
-		config.ACCESS_KEY_ID:        utils.String(config.ConfigGlobal.AccessKeyId),
-		config.ACCESS_KEY_SECRET:    utils.String(config.ConfigGlobal.AccessKeySecret),
-		config.OSS_BUCKET:           utils.String(config.ConfigGlobal.Bucket),
-		config.OSS_ENDPOINT:         utils.String(config.ConfigGlobal.OssEndpoint),
 		config.OTS_INSTANCE:         utils.String(config.ConfigGlobal.OtsInstanceName),
 		config.OTS_ENDPOINT:         utils.String(config.ConfigGlobal.OtsEndpoint),
 	}
+	if config.ConfigGlobal.OssMode == config.REMOTE {
+		env[config.OSS_ENDPOINT] = utils.String(config.ConfigGlobal.OssEndpoint)
+		env[config.OSS_BUCKET] = utils.String(config.ConfigGlobal.Bucket)
+	}
+	return env
 }

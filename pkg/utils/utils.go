@@ -2,9 +2,11 @@ package utils
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
+	"os"
 	"time"
 )
 
@@ -71,4 +73,31 @@ func PortCheck(port string, timeout int) bool {
 		}
 	}
 	return false
+}
+
+func DeleteLocalModelFile(localFile string) (bool, error) {
+	_, err := os.Stat(localFile)
+	if err == nil {
+		if err := os.Remove(localFile); err == nil {
+			return true, nil
+		} else {
+			return false, errors.New("delete model fail")
+		}
+	}
+	if os.IsNotExist(err) {
+		return false, errors.New("model not exist")
+	}
+	return false, err
+}
+
+// FileExists check file exist
+func FileExists(path string) bool {
+	_, err := os.Stat(path)
+	if err != nil {
+		if os.IsExist(err) {
+			return true
+		}
+		return false
+	}
+	return true
 }
