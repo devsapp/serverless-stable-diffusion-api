@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
@@ -56,6 +57,8 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
 		return
 	}
+	// preprocess request ossPath image to base64
+	preprocessRequest(request)
 	// update request OverrideSettings
 	if request.OverrideSettings == nil {
 		overrideSettings := make(map[string]interface{})
@@ -112,6 +115,8 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
 		return
 	}
+	// preprocess request ossPath image to base64
+	preprocessRequest(request)
 	// update request OverrideSettings
 	if request.OverrideSettings == nil {
 		overrideSettings := make(map[string]interface{})
@@ -175,7 +180,21 @@ func (a *AgentHandler) predictTask(user, taskId, path string, body []byte) error
 		log.Println(err.Error())
 		return err
 	}
-	result.Parameters["alwayson_scripts"] = ""
+	if result == nil {
+		if err := a.taskStore.Update(taskId, map[string]interface{}{
+			datastore.KTaskCode:        int64(resp.StatusCode),
+			datastore.KTaskStatus:      config.TASK_FAILED,
+			datastore.KTaskInfo:        string(body),
+			datastore.KModelModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+		}); err != nil {
+			log.Println(err.Error())
+			return err
+		}
+		return errors.New("txt2img predict fail")
+	}
+	if result.Parameters != nil {
+		result.Parameters["alwayson_scripts"] = ""
+	}
 	params, err := json.Marshal(result.Parameters)
 	if err != nil {
 		log.Println("json:", err.Error())
@@ -310,6 +329,59 @@ func (a *AgentHandler) updateRequest(overrideSettings *map[string]interface{}, u
 		}
 	}
 	return nil
+}
+
+// deal ossImg to base64
+func preprocessRequest(req any) {
+	switch req.(type) {
+	case *models.Txt2ImgJSONRequestBody:
+		request := req.(*models.Txt2ImgJSONRequestBody)
+		if request.AlwaysonScripts != nil {
+			updateControlNet(request.AlwaysonScripts)
+		}
+	case *models.Img2ImgJSONRequestBody:
+		request := req.(*models.Img2ImgJSONRequestBody)
+		// init images: ossPath to base64Str
+		for i, str := range *request.InitImages {
+			if !isImgPath(str) {
+				continue
+			}
+			base64, _ := module.OssGlobal.DownloadFileToBase64(str)
+			(*request.InitImages)[i] = *base64
+		}
+
+		// controlNet images: ossPath to base64Str
+		if request.AlwaysonScripts != nil {
+			updateControlNet(request.AlwaysonScripts)
+		}
+	}
+}
+func updateControlNet(alwaysonScripts *map[string]interface{}) {
+	//str, _ := json.Marshal(alwaysonScripts)
+	//log.Println(string(str))
+	controlNet, ok := (*alwaysonScripts)["controlnet"]
+	if !ok {
+		return
+	}
+	args, ok := controlNet.(map[string]interface{})["args"]
+	if !ok {
+		return
+	}
+	for i, item := range args.([]interface{}) {
+		if val, ok := item.(map[string]interface{})["image"]; ok {
+			inputImage := val.(string)
+			if !isImgPath(inputImage) {
+				continue
+			}
+			// oss image to base64
+			if base64Str, err := module.OssGlobal.DownloadFileToBase64(inputImage); err == nil {
+				args.([]interface{})[i].(map[string]interface{})["image"] = *base64Str
+			}
+		}
+	}
+	(*alwaysonScripts)["controlnet"] = map[string]interface{}{"args": args}
+	//str, _ = json.Marshal(alwaysonScripts)
+	//log.Println(string(str))
 }
 
 // ListModels list model, not support

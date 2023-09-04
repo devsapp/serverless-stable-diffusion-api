@@ -655,32 +655,3 @@ func isAsync(invokeType string) bool {
 	}
 	return true
 }
-
-//// deal ossImg to base64
-//func preprocessRequest(req any) {
-//	switch req.(type) {
-//	case *models.Txt2ImgJSONRequestBody:
-//		request := req.(*models.Txt2ImgJSONRequestBody)
-//		if request.AlwaysonScripts != nil {
-//			controlNet, ok := (*request.AlwaysonScripts)["controlnet"]
-//			if !ok {
-//				return
-//			}
-//			args, ok := controlNet.(map[string]interface{})["args"]
-//			if !ok {
-//				return
-//			}
-//			for i, item := range args.([]interface{}) {
-//				if val, ok := item.(map[string]interface{})["image"]; ok {
-//					inputImage := val.(string)
-//					// oss image to base64
-//					if base64Str, err := module.OssGlobal.DownloadFileToBase64(inputImage); err == nil {
-//						args.([]interface{})[i].(map[string]interface{})["image"] = base64Str
-//					}
-//				}
-//			}
-//			(*request.AlwaysonScripts)["controlnet"] = args
-//		}
-//	case *models.Img2ImgJSONRequestBody:
-//	}
-//}
