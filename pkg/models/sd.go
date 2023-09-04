@@ -32,7 +32,7 @@ type Args struct {
 	Enabled       bool    `json:"enabled"`
 	GuidanceEnd   float64 `json:"guidance_end"`
 	GuidanceStart float64 `json:"guidance_start"`
-	InputImage    string  `json:"image"`
+	Image         string  `json:"image"`
 	Lowvram       bool    `json:"lowvram"`
 	Model         string  `json:"model"`
 	Module        string  `json:"module"`

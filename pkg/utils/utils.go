@@ -2,8 +2,10 @@ package utils
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"gocv.io/x/gocv"
 	"math/rand"
 	"net"
 	"os"
@@ -100,4 +102,14 @@ func FileExists(path string) bool {
 		return false
 	}
 	return true
+}
+
+func ImageToBase64(path string, ext gocv.FileExt) (*string, error) {
+	imageMat := gocv.IMRead(path, gocv.IMReadColor)
+	imageBytes, err := gocv.IMEncode(ext, imageMat)
+	if err != nil {
+		return String(""), err
+	}
+	imageBase64 := base64.StdEncoding.EncodeToString(imageBytes.GetBytes())
+	return &imageBase64, nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"io/ioutil"
 	"os"
+	"strings"
 )
 
 const (
@@ -88,4 +89,9 @@ func deleteLocalModelFile(localFile string) (bool, error) {
 
 func handleError(c *gin.Context, code int, err string) {
 	c.JSON(code, gin.H{"message": err})
+}
+
+func isImgPath(str string) bool {
+	return strings.HasSuffix(str, ".png") || strings.HasSuffix(str, ".jpg") ||
+		strings.HasSuffix(str, ".jpeg")
 }
