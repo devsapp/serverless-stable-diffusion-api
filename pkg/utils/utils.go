@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -112,4 +113,18 @@ func ImageToBase64(path string, ext gocv.FileExt) (*string, error) {
 	}
 	imageBase64 := base64.StdEncoding.EncodeToString(imageBytes.GetBytes())
 	return &imageBase64, nil
+}
+
+func ImageType(imageFn string) (gocv.FileExt, error) {
+	fileExt := gocv.PNGFileExt
+	imgTypeSlice := strings.Split(imageFn, ".")
+	switch imgTypeSlice[len(imgTypeSlice)-1] {
+	case "png":
+		fileExt = gocv.PNGFileExt
+	case "jpg", "jpeg":
+		fileExt = gocv.JPEGFileExt
+	default:
+		return "", errors.New("img type not support")
+	}
+	return fileExt, nil
 }

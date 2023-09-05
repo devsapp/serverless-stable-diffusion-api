@@ -245,7 +245,6 @@ func (a *AgentHandler) taskProgress(ctx context.Context, user, taskId string) er
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			resp.Body.Close()
 			return err
 		}
 		resp.Body.Close()
