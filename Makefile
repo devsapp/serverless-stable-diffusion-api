@@ -2,9 +2,9 @@ IMAGE=registry.cn-beijing.aliyuncs.com/xxx/sd-api
 TAG=v1
 
 build-agent:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/agent/agentServer cmd/agent/main.go
+	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o build/agent/agentServer cmd/agent/main.go
 build-proxy:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/proxy/proxyServer cmd/proxy/main.go
+	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o build/proxy/proxyServer cmd/proxy/main.go
 build-agent-image: build-agent
 	chmod 755 build/agent/entrypoint.sh
 	DOCKER_BUILDKIT=1 docker build  -f build/agent/Dockerfile -t ${IMAGE}:agent_${TAG} .
