@@ -190,7 +190,7 @@ func (a *AgentHandler) predictTask(user, taskId, path string, body []byte) error
 			log.Println(err.Error())
 			return err
 		}
-		return errors.New("txt2img predict fail")
+		return errors.New("predict fail")
 	}
 	if result.Parameters != nil {
 		result.Parameters["alwayson_scripts"] = ""
