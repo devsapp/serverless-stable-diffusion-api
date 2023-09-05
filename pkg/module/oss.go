@@ -2,12 +2,14 @@ package module
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
 	"gocv.io/x/gocv"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -74,8 +76,34 @@ func (o *OssManagerRemote) DeleteFile(ossKey string) error {
 	return o.bucket.DeleteObject(ossKey)
 }
 
-func (o *OssManagerRemote) DownloadFileToBase64(ossPath string) (*string, error) {
-	return nil, nil
+func (o *OssManagerRemote) DownloadFileToBase64(ossKey string) (*string, error) {
+	// get image from oss
+	body, err := o.bucket.GetObject(ossKey)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := ioutil.ReadAll(body)
+	body.Close()
+	if err != nil {
+		return nil, err
+	}
+	// cv decode image
+	imageMat, err := gocv.IMDecode(data, gocv.IMReadColor)
+	if err != nil {
+		return nil, err
+	}
+	fileExt, err := utils.ImageType(ossKey)
+	if err != nil {
+		return nil, err
+	}
+	imageBytes, err := gocv.IMEncode(fileExt, imageMat)
+	if err != nil {
+		return nil, err
+	}
+	// image to base64
+	imageBase64 := base64.StdEncoding.EncodeToString(imageBytes.GetBytes())
+	return &imageBase64, nil
 }
 
 type OssManagerLocal struct {
@@ -120,15 +148,9 @@ func (o *OssManagerLocal) DeleteFile(ossKey string) error {
 // DownloadFileToBase64 : support png/jpg/jpeg
 func (o *OssManagerLocal) DownloadFileToBase64(ossKey string) (*string, error) {
 	destFile := fmt.Sprintf("%s/%s", config.ConfigGlobal.OssPath, ossKey)
-	fileExt := gocv.PNGFileExt
-	imgTypeSlice := strings.Split(ossKey, ".")
-	switch imgTypeSlice[len(imgTypeSlice)-1] {
-	case "png":
-		fileExt = gocv.PNGFileExt
-	case "jpg", "jpeg":
-		fileExt = gocv.JPEGFileExt
-	default:
-		return nil, errors.New("img type not support")
+	fileExt, err := utils.ImageType(ossKey)
+	if err != nil {
+		return nil, err
 	}
 	return utils.ImageToBase64(destFile, fileExt)
 }
