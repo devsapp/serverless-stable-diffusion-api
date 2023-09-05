@@ -58,7 +58,9 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 		return
 	}
 	// preprocess request ossPath image to base64
-	preprocessRequest(request)
+	if err := preprocessRequest(request); err != nil {
+		handleError(c, http.StatusBadRequest, err.Error())
+	}
 	// update request OverrideSettings
 	if request.OverrideSettings == nil {
 		overrideSettings := make(map[string]interface{})
@@ -116,7 +118,9 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 		return
 	}
 	// preprocess request ossPath image to base64
-	preprocessRequest(request)
+	if err := preprocessRequest(request); err != nil {
+		handleError(c, http.StatusBadRequest, err.Error())
+	}
 	// update request OverrideSettings
 	if request.OverrideSettings == nil {
 		overrideSettings := make(map[string]interface{})
@@ -331,7 +335,7 @@ func (a *AgentHandler) updateRequest(overrideSettings *map[string]interface{}, u
 }
 
 // deal ossImg to base64
-func preprocessRequest(req any) {
+func preprocessRequest(req any) error {
 	switch req.(type) {
 	case *models.Txt2ImgJSONRequestBody:
 		request := req.(*models.Txt2ImgJSONRequestBody)
@@ -345,26 +349,28 @@ func preprocessRequest(req any) {
 			if !isImgPath(str) {
 				continue
 			}
-			base64, _ := module.OssGlobal.DownloadFileToBase64(str)
+			base64, err := module.OssGlobal.DownloadFileToBase64(str)
+			if err != nil {
+				return err
+			}
 			(*request.InitImages)[i] = *base64
 		}
 
 		// controlNet images: ossPath to base64Str
 		if request.AlwaysonScripts != nil {
-			updateControlNet(request.AlwaysonScripts)
+			return updateControlNet(request.AlwaysonScripts)
 		}
 	}
+	return nil
 }
-func updateControlNet(alwaysonScripts *map[string]interface{}) {
-	//str, _ := json.Marshal(alwaysonScripts)
-	//log.Println(string(str))
+func updateControlNet(alwaysonScripts *map[string]interface{}) error {
 	controlNet, ok := (*alwaysonScripts)["controlnet"]
 	if !ok {
-		return
+		return nil
 	}
 	args, ok := controlNet.(map[string]interface{})["args"]
 	if !ok {
-		return
+		return nil
 	}
 	for i, item := range args.([]interface{}) {
 		if val, ok := item.(map[string]interface{})["image"]; ok {
@@ -375,12 +381,13 @@ func updateControlNet(alwaysonScripts *map[string]interface{}) {
 			// oss image to base64
 			if base64Str, err := module.OssGlobal.DownloadFileToBase64(inputImage); err == nil {
 				args.([]interface{})[i].(map[string]interface{})["image"] = *base64Str
+			} else {
+				return err
 			}
 		}
 	}
 	(*alwaysonScripts)["controlnet"] = map[string]interface{}{"args": args}
-	//str, _ = json.Marshal(alwaysonScripts)
-	//log.Println(string(str))
+	return nil
 }
 
 // ListModels list model, not support
