@@ -21,6 +21,7 @@ const (
 	FcAsyncKey       = "X-Fc-Invocation-Type"
 	versionKey       = "version"
 	requestOk        = 200
+	requestFail      = 422
 	asyncSuccessCode = 202
 	syncSuccessCode  = 200
 )
