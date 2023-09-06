@@ -83,7 +83,7 @@ func (p *ProxyHandler) CancelTask(c *gin.Context, taskId string) {
 func (p *ProxyHandler) GetTaskResult(c *gin.Context, taskId string) {
 	result, err := p.getTaskResult(taskId)
 	if err != nil {
-		handleError(c, http.StatusNotFound, config.NOTFOUND)
+		handleError(c, http.StatusNotFound, err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, result)
@@ -296,7 +296,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 	// init taskId
 	taskId := utils.RandStr(taskIdLength)
 	log.Println("taskid:", taskId)
-	//// check request valid: sdModel and sdVae exist
+	// check request valid: sdModel and sdVae exist
 	if existed := p.checkModelExist(request.StableDiffusionModel, request.SdVae); !existed {
 		handleError(c, http.StatusNotFound, "model not found, please check request")
 		return
@@ -560,11 +560,12 @@ func (p *ProxyHandler) getTaskResult(taskId string) (*models.TaskResultResponse,
 	if err != nil || data == nil || len(data) == 0 {
 		return nil, errors.New("not found")
 	}
-
-	// check predict code
-	if data[datastore.KTaskCode].(int64) != requestOk {
-		result.Message = utils.String("predict error")
+	if code, ok := data[datastore.KTaskCode]; ok && code.(int64) != requestOk {
+		return nil, fmt.Errorf("task:%s predict fail", taskId)
+	} else if !ok {
+		return nil, fmt.Errorf("task:%s predict fail", taskId)
 	}
+
 	// images
 	result.Images = strings.Split(data[datastore.KTaskImage].(string), ",")
 	// params
@@ -630,7 +631,7 @@ func getModelsStatus(modelType string) string {
 	case config.SD_MODEL, config.SD_VAE:
 		return config.MODEL_LOADED
 	default:
-		return config.MODEL_REGISTERING
+		return config.MODEL_LOADED
 	}
 }
 

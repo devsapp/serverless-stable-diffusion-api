@@ -54,11 +54,23 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 
 	request := new(models.Img2ImgJSONRequestBody)
 	if err := getBindResult(c, request); err != nil {
+		// update task status
+		a.taskStore.Update(taskId, map[string]interface{}{
+			datastore.KTaskStatus:     config.TASK_FAILED,
+			datastore.KTaskCode:       requestFail,
+			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+		})
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
 		return
 	}
 	// preprocess request ossPath image to base64
 	if err := preprocessRequest(request); err != nil {
+		// update task status
+		a.taskStore.Update(taskId, map[string]interface{}{
+			datastore.KTaskStatus:     config.TASK_FAILED,
+			datastore.KTaskCode:       requestFail,
+			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+		})
 		handleError(c, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -115,11 +127,23 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 
 	request := new(models.Txt2ImgJSONRequestBody)
 	if err := getBindResult(c, request); err != nil {
+		// update task status
+		a.taskStore.Update(taskId, map[string]interface{}{
+			datastore.KTaskStatus:     config.TASK_FAILED,
+			datastore.KTaskCode:       requestFail,
+			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+		})
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
 		return
 	}
 	// preprocess request ossPath image to base64
 	if err := preprocessRequest(request); err != nil {
+		// update task status
+		a.taskStore.Update(taskId, map[string]interface{}{
+			datastore.KTaskStatus:     config.TASK_FAILED,
+			datastore.KTaskCode:       requestFail,
+			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+		})
 		handleError(c, http.StatusBadRequest, err.Error())
 		return
 	}
