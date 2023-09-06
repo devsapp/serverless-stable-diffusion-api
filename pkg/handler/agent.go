@@ -60,6 +60,7 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 	// preprocess request ossPath image to base64
 	if err := preprocessRequest(request); err != nil {
 		handleError(c, http.StatusBadRequest, err.Error())
+		return
 	}
 	// update request OverrideSettings
 	if request.OverrideSettings == nil {
@@ -120,6 +121,7 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 	// preprocess request ossPath image to base64
 	if err := preprocessRequest(request); err != nil {
 		handleError(c, http.StatusBadRequest, err.Error())
+		return
 	}
 	// update request OverrideSettings
 	if request.OverrideSettings == nil {
@@ -340,7 +342,7 @@ func preprocessRequest(req any) error {
 	case *models.Txt2ImgJSONRequestBody:
 		request := req.(*models.Txt2ImgJSONRequestBody)
 		if request.AlwaysonScripts != nil {
-			updateControlNet(request.AlwaysonScripts)
+			return updateControlNet(request.AlwaysonScripts)
 		}
 	case *models.Img2ImgJSONRequestBody:
 		request := req.(*models.Img2ImgJSONRequestBody)
