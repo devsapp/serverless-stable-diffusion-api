@@ -57,7 +57,7 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 		// update task status
 		a.taskStore.Update(taskId, map[string]interface{}{
 			datastore.KTaskStatus:     config.TASK_FAILED,
-			datastore.KTaskCode:       requestFail,
+			datastore.KTaskCode:       int64(requestFail),
 			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
 		})
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
@@ -68,7 +68,7 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 		// update task status
 		a.taskStore.Update(taskId, map[string]interface{}{
 			datastore.KTaskStatus:     config.TASK_FAILED,
-			datastore.KTaskCode:       requestFail,
+			datastore.KTaskCode:       int64(requestFail),
 			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
 		})
 		handleError(c, http.StatusBadRequest, err.Error())
@@ -130,7 +130,7 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 		// update task status
 		a.taskStore.Update(taskId, map[string]interface{}{
 			datastore.KTaskStatus:     config.TASK_FAILED,
-			datastore.KTaskCode:       requestFail,
+			datastore.KTaskCode:       int64(requestFail),
 			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
 		})
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
@@ -141,7 +141,7 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 		// update task status
 		a.taskStore.Update(taskId, map[string]interface{}{
 			datastore.KTaskStatus:     config.TASK_FAILED,
-			datastore.KTaskCode:       requestFail,
+			datastore.KTaskCode:       int64(requestFail),
 			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
 		})
 		handleError(c, http.StatusBadRequest, err.Error())
