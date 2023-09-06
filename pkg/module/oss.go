@@ -148,6 +148,9 @@ func (o *OssManagerLocal) DeleteFile(ossKey string) error {
 // DownloadFileToBase64 : support png/jpg/jpeg
 func (o *OssManagerLocal) DownloadFileToBase64(ossKey string) (*string, error) {
 	destFile := fmt.Sprintf("%s/%s", config.ConfigGlobal.OssPath, ossKey)
+	if !utils.FileExists(destFile) {
+		return nil, fmt.Errorf("ossKey:%s not exist", ossKey)
+	}
 	fileExt, err := utils.ImageType(ossKey)
 	if err != nil {
 		return nil, err
