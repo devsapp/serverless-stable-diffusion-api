@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"gocv.io/x/gocv"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
@@ -127,4 +128,14 @@ func ImageType(imageFn string) (gocv.FileExt, error) {
 		return "", errors.New("img type not support")
 	}
 	return fileExt, nil
+}
+
+func ListFile(path string) []string {
+	fileSlice := make([]string, 0)
+	files, _ := ioutil.ReadDir(path)
+	for _, f := range files {
+		fileSlice = append(fileSlice, f.Name())
+
+	}
+	return fileSlice
 }

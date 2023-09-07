@@ -1,4 +1,4 @@
-dbSqlite: ./sqlite3
+dbSqlite: /mnt/auto/sd/sqlite3
 ossEndpoint: oss-cn-beijing.aliyuncs.com
 bucket: sd-api-t
 ossMode: local
@@ -21,3 +21,4 @@ gpuMemorySize: 16384
 extraArgs: --api
 sessionExpire: 3600
 loginSwitch: off
+useLocalModel: yes

@@ -72,6 +72,7 @@ const (
 	OSS_PATH          = "OSS_PATH"
 	OSS_MODE          = "OSS_MODE"
 	LOGINSWITCH       = "LOGIN_SWITCH"
+	USER_LOCAL_MODEL  = "USE_LOCAL_MODEL"
 )
 
 // function http trigger
