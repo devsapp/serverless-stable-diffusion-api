@@ -6,8 +6,9 @@ ossEndpoint: oss-cn-beijing.aliyuncs.com
 bucket: sd-api-t
 ossMode: local
 ossPath: /mnt/oss
-dbSqlite: ./sqlite3
+dbSqlite: /mnt/auto/sd/sqlite3
 listenInterval: 1
 sdUrlPrefix: http://localhost:7861
 progressImageOutputSwitch: off
 sdPath: /stable-diffusion-webui
+useLocalModel: yes

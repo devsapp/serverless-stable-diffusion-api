@@ -212,10 +212,10 @@ func (a *AgentHandler) predictTask(user, taskId, path string, body []byte) error
 	}
 	if result == nil {
 		if err := a.taskStore.Update(taskId, map[string]interface{}{
-			datastore.KTaskCode:        int64(resp.StatusCode),
-			datastore.KTaskStatus:      config.TASK_FAILED,
-			datastore.KTaskInfo:        string(body),
-			datastore.KModelModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+			datastore.KTaskCode:       int64(resp.StatusCode),
+			datastore.KTaskStatus:     config.TASK_FAILED,
+			datastore.KTaskInfo:       string(body),
+			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
 		}); err != nil {
 			log.Println(err.Error())
 			return err
@@ -243,12 +243,12 @@ func (a *AgentHandler) predictTask(user, taskId, path string, body []byte) error
 		}
 	}
 	if err := a.taskStore.Update(taskId, map[string]interface{}{
-		datastore.KTaskCode:        int64(resp.StatusCode),
-		datastore.KTaskStatus:      config.TASK_FINISH,
-		datastore.KTaskImage:       strings.Join(images, ","),
-		datastore.KTaskParams:      string(params),
-		datastore.KTaskInfo:        result.Info,
-		datastore.KModelModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+		datastore.KTaskCode:       int64(resp.StatusCode),
+		datastore.KTaskStatus:     config.TASK_FINISH,
+		datastore.KTaskImage:      strings.Join(images, ","),
+		datastore.KTaskParams:     string(params),
+		datastore.KTaskInfo:       result.Info,
+		datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
 	}); err != nil {
 		log.Println(err.Error())
 		return err

@@ -48,6 +48,9 @@ type ConfigYaml struct {
 	// sd
 	SdUrlPrefix string `yaml:"sdUrlPrefix"`
 	SdPath      string `yaml:"sdPath"`
+
+	// model
+	UseLocalModels string `yaml:"useLocalModel"`
 }
 
 type ConfigEnv struct {
@@ -65,6 +68,9 @@ type Config struct {
 	ConfigEnv
 }
 
+func (c *Config) UseLocalModel() bool {
+	return c.UseLocalModels == "yes"
+}
 func (c *Config) EnableLogin() bool {
 	return c.LoginSwitch == "on"
 }
@@ -107,6 +113,12 @@ func (c *Config) updateFromEnv() {
 	loginSwitch := os.Getenv(LOGINSWITCH)
 	if loginSwitch != "" {
 		c.LoginSwitch = loginSwitch
+	}
+
+	// use local model or not
+	useLocalModel := os.Getenv(USER_LOCAL_MODEL)
+	if useLocalModel != "" {
+		c.UseLocalModels = useLocalModel
 	}
 }
 

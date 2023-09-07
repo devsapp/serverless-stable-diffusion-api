@@ -1,9 +1,12 @@
 package module
 
 import (
+	"fmt"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
+	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
 	"log"
+	"strings"
 	"sync"
 	"time"
 )
@@ -86,10 +89,18 @@ func (l *ListenDbTask) init() {
 // listen model task
 func (l *ListenDbTask) modelTask(item *DbTaskItem) {
 	curVal := item.curVal.(*map[string]*modelItem)
-	datas, err := l.modelStore.ListAll([]string{datastore.KModelName, datastore.KModelEtag,
-		datastore.KModelType, datastore.KModelStatus, datastore.KModelOssPath})
-	if err != nil {
-		log.Fatal("listen models change fail")
+	datas := make(map[string]map[string]interface{})
+	var err error
+	if config.ConfigGlobal.UseLocalModel() {
+		// controlNet
+		path := fmt.Sprintf("%s/models/%s", config.ConfigGlobal.SdPath, "ControlNet")
+		datas = listModelFile(path)
+	} else {
+		datas, err = l.modelStore.ListAll([]string{datastore.KModelName, datastore.KModelEtag,
+			datastore.KModelType, datastore.KModelStatus, datastore.KModelOssPath})
+		if err != nil {
+			log.Fatal("listen models change fail")
+		}
 	}
 	for _, data := range datas {
 		status := data[datastore.KModelStatus].(string)
@@ -144,11 +155,19 @@ func (l *ListenDbTask) cancelTask(taskId string, item *DbTaskItem) {
 func (l *ListenDbTask) AddTask(key string, listenType ListenType, callBack CallBack) {
 	curVal := make(map[string]*modelItem)
 	if listenType == ModelListen {
-		// model task need init curVal
-		datas, err := l.modelStore.ListAll([]string{datastore.KModelName, datastore.KModelEtag,
-			datastore.KModelStatus, datastore.KModelOssPath})
-		if err != nil {
-			log.Fatal("listen models change fail")
+		datas := make(map[string]map[string]interface{})
+		var err error
+		if config.ConfigGlobal.UseLocalModel() {
+			// controlNet
+			path := fmt.Sprintf("%s/models/%s", config.ConfigGlobal.SdPath, "ControlNet")
+			datas = listModelFile(path)
+		} else {
+			// model task need init curVal
+			datas, err = l.modelStore.ListAll([]string{datastore.KModelName, datastore.KModelEtag,
+				datastore.KModelStatus, datastore.KModelOssPath})
+			if err != nil {
+				log.Fatal("listen models change fail")
+			}
 		}
 		for _, data := range datas {
 			modelName := data[datastore.KModelName].(string)
@@ -167,7 +186,25 @@ func (l *ListenDbTask) AddTask(key string, listenType ListenType, callBack CallB
 	})
 }
 
-// Close close listen
+// Close listen
 func (l *ListenDbTask) Close() {
 	l.stop <- struct{}{}
+}
+
+func listModelFile(path string) map[string]map[string]interface{} {
+	files := utils.ListFile(path)
+	ret := make(map[string]map[string]interface{})
+	for _, name := range files {
+		if strings.HasSuffix(name, ".pt") || strings.HasSuffix(name, ".ckpt") ||
+			strings.HasSuffix(name, ".safetensors") {
+			ret[name] = map[string]interface{}{
+				datastore.KModelStatus:  config.MODEL_LOADED,
+				datastore.KModelName:    name,
+				datastore.KModelEtag:    "",
+				datastore.KModelType:    config.CONTORLNET_MODEL,
+				datastore.KModelOssPath: "",
+			}
+		}
+	}
+	return ret
 }

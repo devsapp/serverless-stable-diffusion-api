@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
+	"github.com/devsapp/serverless-stable-diffusion-api/pkg/models"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/module"
+	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"io/ioutil"
@@ -95,4 +97,19 @@ func handleError(c *gin.Context, code int, err string) {
 func isImgPath(str string) bool {
 	return strings.HasSuffix(str, ".png") || strings.HasSuffix(str, ".jpg") ||
 		strings.HasSuffix(str, ".jpeg")
+}
+
+func listModelFile(path, modelType string) (modelAttrs []*models.ModelAttributes) {
+	files := utils.ListFile(path)
+	for _, name := range files {
+		if strings.HasSuffix(name, ".pt") || strings.HasSuffix(name, ".ckpt") ||
+			strings.HasSuffix(name, ".safetensors") {
+			modelAttrs = append(modelAttrs, &models.ModelAttributes{
+				Type:   modelType,
+				Name:   name,
+				Status: config.MODEL_LOADED,
+			})
+		}
+	}
+	return
 }

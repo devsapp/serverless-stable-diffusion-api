@@ -32,10 +32,12 @@ func ModelChangeEvent(v any) {
 		log.Println("listen model refresh do fail")
 		return
 	}
-	// update
-	if err = modelInfo.modelStore.Update(modelInfo.modelName, map[string]interface{}{
-		datastore.KModelStatus: config.MODEL_LOADED}); err != nil {
-		log.Println("listen model update status fail err=", err.Error())
+	if !config.ConfigGlobal.UseLocalModel() {
+		// update
+		if err = modelInfo.modelStore.Update(modelInfo.modelName, map[string]interface{}{
+			datastore.KModelStatus: config.MODEL_LOADED}); err != nil {
+			log.Println("listen model update status fail err=", err.Error())
+		}
 	}
 	log.Println("listen models signal, model=", modelInfo.modelName)
 }

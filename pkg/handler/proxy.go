@@ -92,20 +92,43 @@ func (p *ProxyHandler) GetTaskResult(c *gin.Context, taskId string) {
 // ListModels list model
 // (GET /models)
 func (p *ProxyHandler) ListModels(c *gin.Context) {
-	val, err := p.modelStore.ListAll([]string{datastore.KModelType, datastore.KModelName,
-		datastore.KModelOssPath, datastore.KModelEtag, datastore.KModelStatus, datastore.KModelCreateTime,
-		datastore.KModelModifyTime})
-	if err != nil {
-		handleError(c, http.StatusInternalServerError, config.INTERNALERROR)
-		return
+	if config.ConfigGlobal.UseLocalModel() {
+		// get from local disk
+		ret := make([]*models.ModelAttributes, 0)
+		// sdModel
+		path := fmt.Sprintf("%s/models/%s", config.ConfigGlobal.SdPath, "Stable-diffusion")
+		ret = append(ret, listModelFile(path, config.SD_MODEL)...)
+		// sdVae
+		path = fmt.Sprintf("%s/models/%s", config.ConfigGlobal.SdPath, "VAE")
+		ret = append(ret, listModelFile(path, config.SD_VAE)...)
+		// lora
+		path = fmt.Sprintf("%s/models/%s", config.ConfigGlobal.SdPath, "Lora")
+		ret = append(ret, listModelFile(path, config.LORA_MODEL)...)
+		// controlNet
+		path = fmt.Sprintf("%s/models/%s", config.ConfigGlobal.SdPath, "ControlNet")
+		ret = append(ret, listModelFile(path, config.CONTORLNET_MODEL)...)
+		c.JSON(http.StatusOK, ret)
+	} else {
+		// get from db
+		val, err := p.modelStore.ListAll([]string{datastore.KModelType, datastore.KModelName,
+			datastore.KModelOssPath, datastore.KModelEtag, datastore.KModelStatus, datastore.KModelCreateTime,
+			datastore.KModelModifyTime})
+		if err != nil {
+			handleError(c, http.StatusInternalServerError, config.INTERNALERROR)
+			return
+		}
+		c.JSON(http.StatusOK, convertToModelResponse(val))
 	}
-	c.JSON(http.StatusOK, convertToModelResponse(val))
 
 }
 
 // RegisterModel upload model
 // (POST /models)
 func (p *ProxyHandler) RegisterModel(c *gin.Context) {
+	if config.ConfigGlobal.UseLocalModel() {
+		c.String(http.StatusNotFound, "useLocalModel=yes not support")
+		return
+	}
 	request := new(models.RegisterModelJSONRequestBody)
 	if err := getBindResult(c, request); err != nil {
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
@@ -151,6 +174,10 @@ func (p *ProxyHandler) RegisterModel(c *gin.Context) {
 // DeleteModel delete model
 // (DELETE /models/{model_name})
 func (p *ProxyHandler) DeleteModel(c *gin.Context, modelName string) {
+	if config.ConfigGlobal.UseLocalModel() {
+		c.String(http.StatusNotFound, "useLocalModel=yes not support")
+		return
+	}
 	// get local file path
 	data, err := p.modelStore.Get(modelName, []string{datastore.KModelLocalPath, datastore.KModelStatus})
 	if err != nil {
@@ -181,6 +208,10 @@ func (p *ProxyHandler) DeleteModel(c *gin.Context, modelName string) {
 // GetModel get model info
 // (GET /models/{model_name})
 func (p *ProxyHandler) GetModel(c *gin.Context, modelName string) {
+	if config.ConfigGlobal.UseLocalModel() {
+		c.String(http.StatusNotFound, "useLocalModel=yes not support")
+		return
+	}
 	data, err := p.modelStore.Get(modelName, []string{datastore.KModelType, datastore.KModelName,
 		datastore.KModelOssPath, datastore.KModelEtag, datastore.KModelStatus, datastore.KModelCreateTime,
 		datastore.KModelModifyTime})
@@ -201,6 +232,10 @@ func (p *ProxyHandler) GetModel(c *gin.Context, modelName string) {
 // UpdateModel update model
 // (PUT /models/{model_name})
 func (p *ProxyHandler) UpdateModel(c *gin.Context, modelName string) {
+	if config.ConfigGlobal.UseLocalModel() {
+		c.String(http.StatusNotFound, "useLocalModel=yes not support")
+		return
+	}
 	request := new(models.UpdateModelJSONRequestBody)
 	if err := getBindResult(c, request); err != nil {
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
@@ -329,7 +364,6 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 		})
 		return
 	}
-
 	// get user current config version
 	userItem, err := p.userStore.Get(username, []string{datastore.KUserConfigVer})
 	if err != nil {
@@ -585,21 +619,28 @@ func (p *ProxyHandler) getTaskResult(taskId string) (*models.TaskResultResponse,
 }
 
 func (p *ProxyHandler) checkModelExist(sdModel, sdVae string) bool {
-	models := []string{sdModel}
-	// check local existed
-	sdModelPath := fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "Stable-diffusion", sdModel)
-	sdVaePath := fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "VAE", sdVae)
-	if utils.FileExists(sdModelPath) && utils.FileExists(sdVaePath) {
-		return true
-	}
-	// check remote db existed
+	models := [][]string{{config.SD_MODEL, sdModel}}
 	// remove sdVae = None || Automatic
 	if sdVae != "None" && sdVae != "Automatic" {
-		models = append(models, sdVae)
+		models = append(models, []string{config.MODEL_SD_VAE, sdVae})
 	}
 	for _, model := range models {
+		// check local existed
+		switch model[0] {
+		case config.SD_MODEL:
+			sdModelPath := fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "Stable-diffusion", sdModel)
+			if utils.FileExists(sdModelPath) {
+				continue
+			}
+		case config.MODEL_SD_VAE:
+			sdVaePath := fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "VAE", sdVae)
+			if utils.FileExists(sdVaePath) {
+				continue
+			}
+		}
+		// check remote db existed
 		// check sdModel
-		if data, err := p.modelStore.Get(model, []string{datastore.KModelStatus}); err != nil || data == nil || len(data) == 0 {
+		if data, err := p.modelStore.Get(model[1], []string{datastore.KModelStatus}); err != nil || data == nil || len(data) == 0 {
 			return false
 		} else if data[datastore.KModelStatus] == config.MODEL_DELETE {
 			return false
@@ -608,12 +649,12 @@ func (p *ProxyHandler) checkModelExist(sdModel, sdVae string) bool {
 	return true
 }
 
-func convertToModelResponse(datas map[string]map[string]interface{}) []models.ModelAttributes {
-	ret := make([]models.ModelAttributes, 0, len(datas))
+func convertToModelResponse(datas map[string]map[string]interface{}) []*models.ModelAttributes {
+	ret := make([]*models.ModelAttributes, 0, len(datas))
 	for _, data := range datas {
 		registeredTime := data[datastore.KModelCreateTime].(string)
 		modifyTime := data[datastore.KModelModifyTime].(string)
-		ret = append(ret, models.ModelAttributes{
+		ret = append(ret, &models.ModelAttributes{
 			Type:                 data[datastore.KModelType].(string),
 			Name:                 data[datastore.KModelName].(string),
 			OssPath:              data[datastore.KModelOssPath].(string),
