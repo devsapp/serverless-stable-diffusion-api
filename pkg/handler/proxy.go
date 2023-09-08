@@ -589,7 +589,7 @@ func (p *ProxyHandler) checkModelExist(sdModel, sdVae string) bool {
 	// check local existed
 	sdModelPath := fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "Stable-diffusion", sdModel)
 	sdVaePath := fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "VAE", sdVae)
-	if utils.FileExists(sdModelPath) && utils.FileExists(sdVaePath) {
+	if utils.FileExists(sdModelPath) && (sdVae == "None" || sdVae == "Automatic" || utils.FileExists(sdVaePath)) {
 		return true
 	}
 	// check remote db existed
