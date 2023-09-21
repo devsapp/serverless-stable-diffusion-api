@@ -56,7 +56,7 @@ type ConfigYaml struct {
 	FlexMode string `yaml:"flexMode"`
 
 	// agent expose to user or not
-	exposeToUser string `yaml:"exposeToUser"`
+	Expose string `yaml:"exposeToUser"`
 }
 
 type ConfigEnv struct {
@@ -75,7 +75,7 @@ type Config struct {
 }
 
 func (c *Config) ExposeToUser() bool {
-	return c.exposeToUser == "yes"
+	return c.Expose == "yes"
 }
 
 // GetFlexMode flex mode
@@ -154,7 +154,7 @@ func (c *Config) updateFromEnv() {
 	// agent expose to user
 	exposeToUser := os.Getenv(EXPOSE_TO_USER)
 	if exposeToUser != "" {
-		c.exposeToUser = exposeToUser
+		c.Expose = exposeToUser
 	}
 
 }
