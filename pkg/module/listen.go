@@ -170,7 +170,7 @@ func (l *ListenDbTask) cancelTask(taskId string, item *TaskItem) {
 	}
 	// check task finish delete db listen task
 	status := ret[datastore.KTaskStatus].(string)
-	if status == config.TASK_FINISH {
+	if status == config.TASK_FINISH || status == config.TASK_FAILED {
 		l.tasks.Delete(taskId)
 		return
 	}

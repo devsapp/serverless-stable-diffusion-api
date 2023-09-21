@@ -163,9 +163,12 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 	// default OverrideSettingsRestoreAfterwards = true
 	request.OverrideSettingsRestoreAfterwards = utils.Bool(false)
 	// update task status
-	a.taskStore.Update(taskId, map[string]interface{}{
+	if err := a.taskStore.Update(taskId, map[string]interface{}{
 		datastore.KTaskStatus: config.TASK_INPROGRESS,
-	})
+	}); err != nil {
+		handleError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
 	// add cancel event task
 	a.listenTask.AddTask(taskId, module.CancelListen, module.CancelEvent)
 	// async progress
