@@ -141,7 +141,7 @@ func (o *OssManagerLocal) DownloadFile(ossKey, localFile string) error {
 }
 func (o *OssManagerLocal) DeleteFile(ossKey string) error {
 	destFile := fmt.Sprintf("%s/%s", config.ConfigGlobal.OssPath, ossKey)
-	_, err := utils.DeleteLocalModelFile(destFile)
+	_, err := utils.DeleteLocalFile(destFile)
 	return err
 }
 

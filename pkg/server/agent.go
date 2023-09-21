@@ -38,21 +38,28 @@ func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, 
 	// init config table
 	configDataStore := tableFactory.NewTable(dbType, datastore.KConfigTableName)
 	// init listen event
-	listenTask := module.NewListenDbTask(config.ConfigGlobal.ListenInterval, taskDataStore, modelDataStore)
+	listenTask := module.NewListenDbTask(config.ConfigGlobal.ListenInterval, taskDataStore, modelDataStore,
+		configDataStore)
 	// add listen model change
 	listenTask.AddTask("modelTask", module.ModelListen, module.ModelChangeEvent)
 	// init handler
 	agentHandler := handler.NewAgentHandler(taskDataStore, modelDataStore, configDataStore, listenTask)
 
 	// update sd config.json
-	if err := module.UpdateSdConfig(); err != nil {
-		log.Fatal("sd config update fail")
+	if !config.ConfigGlobal.ExposeToUser() {
+		if err := module.UpdateSdConfig(configDataStore); err != nil {
+			log.Fatal("sd config update fail")
+		}
 	}
 
 	// init router
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
 	handler.RegisterHandlers(router, agentHandler)
+	if config.ConfigGlobal.ExposeToUser() {
+		// enable ReverserProxy
+		router.NoRoute(agentHandler.ReverseProxy)
+	}
 
 	// make sure sd started
 	if !utils.PortCheck(config.ConfigGlobal.GetSDPort(), SD_START_TIMEOUT) {

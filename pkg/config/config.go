@@ -51,6 +51,12 @@ type ConfigYaml struct {
 
 	// model
 	UseLocalModels string `yaml:"useLocalModel"`
+
+	// flex mode
+	FlexMode string `yaml:"flexMode"`
+
+	// agent expose to user or not
+	exposeToUser string `yaml:"exposeToUser"`
 }
 
 type ConfigEnv struct {
@@ -66,6 +72,18 @@ type ConfigEnv struct {
 type Config struct {
 	ConfigYaml
 	ConfigEnv
+}
+
+func (c *Config) ExposeToUser() bool {
+	return c.exposeToUser == "yes"
+}
+
+// GetFlexMode flex mode
+func (c *Config) GetFlexMode() FlexMode {
+	if c.FlexMode == "singleFunc" {
+		return SingleFunc
+	}
+	return MultiFunc
 }
 
 func (c *Config) UseLocalModel() bool {
@@ -120,6 +138,25 @@ func (c *Config) updateFromEnv() {
 	if useLocalModel != "" {
 		c.UseLocalModels = useLocalModel
 	}
+
+	// sd image cover
+	sdImage := os.Getenv(SD_IMAGE)
+	if sdImage != "" {
+		c.Image = sdImage
+	}
+
+	// flex mode
+	flexMode := os.Getenv(FLEX_MODE)
+	if flexMode != "" {
+		c.FlexMode = flexMode
+	}
+
+	// agent expose to user
+	exposeToUser := os.Getenv(EXPOSE_TO_USER)
+	if exposeToUser != "" {
+		c.exposeToUser = exposeToUser
+	}
+
 }
 
 func InitConfig(fn string) error {

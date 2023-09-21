@@ -63,7 +63,17 @@ func (p *ProxyHandler) Login(c *gin.Context) {
 			Message:  utils.String("login success"),
 		})
 	}
+}
 
+// Restart restart webui api server
+// (POST /restart)
+func (p *ProxyHandler) Restart(c *gin.Context) {
+	// update agent env
+	err := module.FuncManagerGlobal.UpdateAllFunctionEnv()
+	if err != nil {
+		handleError(c, http.StatusInternalServerError, config.INTERNALERROR)
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "success"})
 }
 
 // CancelTask predict task
@@ -190,7 +200,7 @@ func (p *ProxyHandler) DeleteModel(c *gin.Context, modelName string) {
 	}
 	localFile := data[datastore.KModelLocalPath].(string)
 	// delete nas models
-	if ok, err := utils.DeleteLocalModelFile(localFile); !ok {
+	if ok, err := utils.DeleteLocalFile(localFile); !ok {
 		handleError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -270,7 +280,7 @@ func (p *ProxyHandler) UpdateModel(c *gin.Context, modelName string) {
 	}
 	// sdModel and sdVae enable env update
 	if request.Type == config.SD_MODEL || request.Type == config.SD_VAE {
-		if err := module.FuncManagerGlobal.UpdateFunctionEnv(request.Name); err != nil {
+		if err := module.FuncManagerGlobal.UpdateFunctionEnv(request.Name, request.Name); err != nil {
 			handleError(c, http.StatusInternalServerError, config.MODELUPDATEFCERROR)
 			return
 		}
@@ -354,8 +364,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 
 	// get endPoint
 	sdModel := request.StableDiffusionModel
-	sdVae := request.SdVae
-	endPoint, err := module.FuncManagerGlobal.GetEndpoint(sdModel, sdVae)
+	endPoint, err := module.FuncManagerGlobal.GetEndpoint(sdModel)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 			TaskId:  taskId,
@@ -466,8 +475,7 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 
 	// get endPoint
 	sdModel := request.StableDiffusionModel
-	sdVae := request.SdVae
-	endPoint, err := module.FuncManagerGlobal.GetEndpoint(sdModel, sdVae)
+	endPoint, err := module.FuncManagerGlobal.GetEndpoint(sdModel)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 			TaskId:  taskId,
@@ -629,22 +637,22 @@ func (p *ProxyHandler) checkModelExist(sdModel, sdVae string) bool {
 		switch model[0] {
 		case config.SD_MODEL:
 			sdModelPath := fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "Stable-diffusion", sdModel)
-			if utils.FileExists(sdModelPath) {
-				continue
+			if !utils.FileExists(sdModelPath) {
+				return false
 			}
 		case config.MODEL_SD_VAE:
 			sdVaePath := fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "VAE", sdVae)
-			if utils.FileExists(sdVaePath) {
-				continue
+			if !utils.FileExists(sdVaePath) {
+				return false
 			}
 		}
 		// check remote db existed
 		// check sdModel
-		if data, err := p.modelStore.Get(model[1], []string{datastore.KModelStatus}); err != nil || data == nil || len(data) == 0 {
-			return false
-		} else if data[datastore.KModelStatus] == config.MODEL_DELETE {
-			return false
-		}
+		//if data, err := p.modelStore.Get(model[1], []string{datastore.KModelStatus}); err != nil || data == nil || len(data) == 0 {
+		//	return false
+		//} else if data[datastore.KModelStatus] == config.MODEL_DELETE {
+		//	return false
+		//}
 	}
 	return true
 }

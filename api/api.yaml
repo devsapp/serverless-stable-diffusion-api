@@ -282,6 +282,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /restart:
+    post:
+      summary: restart webui api server
+      operationId: restart
+      responses:
+        "200":
+          description: restart success
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
 components:
   schemas:

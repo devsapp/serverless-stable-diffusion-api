@@ -15,6 +15,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -79,12 +81,13 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 		overrideSettings := make(map[string]interface{})
 		request.OverrideSettings = &overrideSettings
 	}
-	if err := a.updateRequest(request.OverrideSettings, username, configVer); err != nil {
+	if err := a.updateOverrideSettingsRequest(request.OverrideSettings, username, configVer,
+		request.StableDiffusionModel, request.SdVae); err != nil {
 		handleError(c, http.StatusInternalServerError, "please check config")
 		return
 	}
 	// default OverrideSettingsRestoreAfterwards = true
-	request.OverrideSettingsRestoreAfterwards = utils.Bool(true)
+	request.OverrideSettingsRestoreAfterwards = utils.Bool(false)
 	// update task status
 	a.taskStore.Update(taskId, map[string]interface{}{
 		datastore.KTaskStatus: config.TASK_INPROGRESS,
@@ -152,12 +155,13 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 		overrideSettings := make(map[string]interface{})
 		request.OverrideSettings = &overrideSettings
 	}
-	if err := a.updateRequest(request.OverrideSettings, username, configVer); err != nil {
+	if err := a.updateOverrideSettingsRequest(request.OverrideSettings, username, configVer,
+		request.StableDiffusionModel, request.SdVae); err != nil {
 		handleError(c, http.StatusInternalServerError, "please check config")
 		return
 	}
 	// default OverrideSettingsRestoreAfterwards = true
-	request.OverrideSettingsRestoreAfterwards = utils.Bool(true)
+	request.OverrideSettingsRestoreAfterwards = utils.Bool(false)
 	// update task status
 	a.taskStore.Update(taskId, map[string]interface{}{
 		datastore.KTaskStatus: config.TASK_INPROGRESS,
@@ -328,7 +332,16 @@ func (a *AgentHandler) taskProgress(ctx context.Context, user, taskId string) er
 	}
 }
 
-func (a *AgentHandler) updateRequest(overrideSettings *map[string]interface{}, username, configVersion string) error {
+func (a *AgentHandler) updateOverrideSettingsRequest(overrideSettings *map[string]interface{},
+	username, configVersion, sdModel, sdVae string) error {
+	//if config.ConfigGlobal.GetFlexMode() == config.MultiFunc {
+	//	// remove sd_model_checkpoint and sd_vae
+	//	delete(*overrideSettings, "sd_model_checkpoint")
+	//	(*overrideSettings)["sd_vae"] = sdVae
+	//} else {
+	(*overrideSettings)["sd_model_checkpoint"] = sdModel
+	(*overrideSettings)["sd_vae"] = sdVae
+	//}
 	// version == -1 use default
 	if configVersion == "-1" {
 		return nil
@@ -348,9 +361,6 @@ func (a *AgentHandler) updateRequest(overrideSettings *map[string]interface{}, u
 	if err := json.Unmarshal([]byte(val), &m); err != nil {
 		return nil
 	}
-	// remove sd_model_checkpoint and sd_vae
-	delete(*overrideSettings, "sd_model_checkpoint")
-	delete(*overrideSettings, "sd_vae")
 	// priority request > db
 	for k, v := range m {
 		if _, ok := (*overrideSettings)[k]; !ok {
@@ -474,4 +484,26 @@ func (a *AgentHandler) UpdateOptions(c *gin.Context) {
 // (POST /login)
 func (p *AgentHandler) Login(c *gin.Context) {
 	c.String(http.StatusNotFound, "api not support")
+}
+
+// Restart user login
+// (POST /restart)
+func (p *AgentHandler) Restart(c *gin.Context) {
+	c.String(http.StatusNotFound, "api not support")
+}
+
+func (p *AgentHandler) ReverseProxy(c *gin.Context) {
+	target := config.ConfigGlobal.SdUrlPrefix
+	remote, err := url.Parse(target)
+	if err != nil {
+		panic(err)
+	}
+	proxy := httputil.NewSingleHostReverseProxy(remote)
+	proxy.Director = func(req *http.Request) {
+		req.Header = c.Request.Header
+		req.Host = remote.Host
+		req.URL.Scheme = remote.Scheme
+		req.URL.Host = remote.Host
+	}
+	proxy.ServeHTTP(c.Writer, c.Request)
 }

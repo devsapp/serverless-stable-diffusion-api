@@ -20,8 +20,9 @@ const (
 )
 
 type SdModels struct {
-	sdModel string
-	sdVae   string
+	sdModel  string
+	sdVae    string
+	endpoint string
 }
 
 var FuncManagerGlobal *FuncManager
@@ -30,11 +31,11 @@ var FuncManagerGlobal *FuncManager
 // create function and http trigger
 // update instance env
 type FuncManager struct {
-	endpoints   map[string]string
-	modelToInfo map[string][]*SdModels
-	funcStore   datastore.Datastore
-	fcClient    *fc.Client
-	lock        sync.RWMutex
+	endpoints map[string][]string
+	//modelToInfo map[string][]*SdModels
+	funcStore datastore.Datastore
+	fcClient  *fc.Client
+	lock      sync.RWMutex
 }
 
 func InitFuncManager(funcStore datastore.Datastore) error {
@@ -48,10 +49,10 @@ func InitFuncManager(funcStore datastore.Datastore) error {
 		return err
 	}
 	FuncManagerGlobal = &FuncManager{
-		endpoints:   make(map[string]string),
-		funcStore:   funcStore,
-		fcClient:    fcClient,
-		modelToInfo: make(map[string][]*SdModels),
+		endpoints: make(map[string][]string),
+		funcStore: funcStore,
+		fcClient:  fcClient,
+		//modelToInfo: make(map[string][]*SdModels),
 	}
 	// load func endpoint to cache
 	FuncManagerGlobal.loadFunc()
@@ -63,8 +64,12 @@ func InitFuncManager(funcStore datastore.Datastore) error {
 // first get from cache
 // second get from db
 // third create function and return endpoint
-func (f *FuncManager) GetEndpoint(sdModel, sdVae string) (string, error) {
-	key := getKey(sdModel, sdVae)
+func (f *FuncManager) GetEndpoint(sdModel string) (string, error) {
+	key := "default"
+	if config.ConfigGlobal.GetFlexMode() == config.MultiFunc {
+		key = sdModel
+	}
+	log.Println(key, sdModel)
 	// retry
 	reTry := 2
 	for reTry > 0 {
@@ -80,7 +85,7 @@ func (f *FuncManager) GetEndpoint(sdModel, sdVae string) (string, error) {
 			return endpoint, nil
 		}
 		// third create function
-		if endpoint := f.createFunc(sdModel, sdVae, getEnv(sdModel, sdVae)); endpoint != "" {
+		if endpoint := f.createFunc(key, sdModel, getEnv(sdModel)); endpoint != "" {
 			f.lock.Unlock()
 			return endpoint, nil
 		}
@@ -91,23 +96,49 @@ func (f *FuncManager) GetEndpoint(sdModel, sdVae string) (string, error) {
 	return "", errors.New("not get sd endpoint")
 }
 
-// UpdateFunctionEnv update instance env
-// input modelName and env
-func (f *FuncManager) UpdateFunctionEnv(modelName string) error {
-	infos := f.getModelInfo(modelName)
-	if infos == nil {
-		return nil
-	}
-	for _, info := range infos {
-		env := getEnv(info.sdModel, info.sdVae)
-		key := getKey(info.sdModel, info.sdVae)
-		functionName := getFunctionName(key)
-		if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
-			new(fc.UpdateFunctionRequest).SetGpuMemorySize(config.ConfigGlobal.GpuMemorySize).
-				SetEnvironmentVariables(env)); err != nil {
+// UpdateAllFunctionEnv update instance env, restart agent function
+func (f *FuncManager) UpdateAllFunctionEnv() error {
+	// reload from db
+	f.lock.Lock()
+	f.loadFunc()
+	f.lock.Unlock()
+	// update all function env
+	for key, item := range f.endpoints {
+		if err := f.UpdateFunctionEnv(key, item[1]); err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+// UpdateFunctionEnv update instance env
+// input modelName and env
+func (f *FuncManager) UpdateFunctionEnv(key, modelName string) error {
+	// check model->function exist
+	if !f.funcExist(key) {
+		return nil
+	}
+	env := getEnv(modelName)
+	functionName := getFunctionName(key)
+	if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
+		new(fc.UpdateFunctionRequest).SetGpuMemorySize(config.ConfigGlobal.GpuMemorySize).
+			SetEnvironmentVariables(env)); err != nil {
+		log.Println(err.Error())
+		return err
+	}
+	return nil
+}
+
+// UpdateFunctionImage update instance Image
+func (f *FuncManager) UpdateFunctionImage(key string) error {
+	functionName := getFunctionName(key)
+	if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
+		new(fc.UpdateFunctionRequest).SetGpuMemorySize(config.ConfigGlobal.GpuMemorySize).
+			SetCustomContainerConfig(new(fc.CustomContainerConfig).
+				SetImage(config.ConfigGlobal.Image))); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -116,30 +147,31 @@ func (f *FuncManager) getEndpointFromCache(key string) string {
 	f.lock.RLock()
 	defer f.lock.RUnlock()
 	if val, ok := f.endpoints[key]; ok {
-		return val
+		return val[0]
 	}
 	return ""
 }
 
 // get endpoint from db
 func (f *FuncManager) getEndpointFromDb(key string) string {
-	if data, err := f.funcStore.Get(key, []string{datastore.KModelServiceEndPoint}); err == nil && len(data) == 1 {
+	if data, err := f.funcStore.Get(key, []string{datastore.KModelServiceSdModel,
+		datastore.KModelServiceEndPoint}); err == nil && len(data) > 0 {
 		// update cache
-		f.endpoints[key] = data[datastore.KModelServiceEndPoint].(string)
+		f.endpoints[key] = []string{data[datastore.KModelServiceEndPoint].(string),
+			data[datastore.KModelServiceSdModel].(string)}
 		return data[datastore.KModelServiceEndPoint].(string)
 	}
 	return ""
 }
 
-func (f *FuncManager) createFunc(sdModel, sdVae string, env map[string]*string) string {
-	key := getKey(sdModel, sdVae)
+func (f *FuncManager) createFunc(key, sdModel string, env map[string]*string) string {
 	functionName := getFunctionName(key)
 	serviceName := config.ConfigGlobal.ServiceName
 	if endpoint, err := f.createFCFunction(serviceName, functionName, env); err == nil && endpoint != "" {
 		// update cache
-		f.endpoints[functionName] = endpoint
+		f.endpoints[key] = []string{endpoint, sdModel}
 		// put func to db
-		f.putFunc(sdModel, sdVae, endpoint)
+		f.putFunc(key, functionName, sdModel, endpoint)
 		return endpoint
 	} else {
 		log.Println(err.Error())
@@ -149,67 +181,44 @@ func (f *FuncManager) createFunc(sdModel, sdVae string, env map[string]*string) 
 
 // load endpoint from db
 func (f *FuncManager) loadFunc() {
-	// clear modelToInfo
-	f.modelToInfo = make(map[string][]*SdModels)
 	// load func from db
 	funcAll, _ := f.funcStore.ListAll([]string{datastore.KModelServiceKey, datastore.KModelServiceEndPoint,
-		datastore.KModelServiceSdModel, datastore.KModelServiceSdVae})
+		datastore.KModelServiceSdModel, datastore.KModelServerImage})
 	for _, data := range funcAll {
 		key := data[datastore.KModelServiceKey].(string)
+		image := data[datastore.KModelServerImage]
+		if image != config.ConfigGlobal.Image {
+			// update function image
+			f.UpdateFunctionImage(key)
+			// update db
+			f.funcStore.Update(key, map[string]interface{}{
+				datastore.KModelServerImage: config.ConfigGlobal.Image,
+				datastore.KModelModifyTime:  fmt.Sprintf("%d", utils.TimestampS()),
+			})
+		}
 		endpoint := data[datastore.KModelServiceEndPoint].(string)
-		f.endpoints[key] = endpoint
 		sdModel := data[datastore.KModelServiceSdModel].(string)
-		sdVae := data[datastore.KModelServiceSdVae].(string)
-		info := &SdModels{
-			sdModel: sdModel,
-			sdVae:   sdVae,
-		}
-		if _, ok := f.modelToInfo[sdModel]; !ok {
-			f.modelToInfo[sdModel] = []*SdModels{info}
-		} else {
-			f.modelToInfo[sdModel] = append(f.modelToInfo[sdModel], info)
-		}
-		if _, ok := f.modelToInfo[sdVae]; !ok {
-			f.modelToInfo[sdVae] = []*SdModels{info}
-		} else {
-			f.modelToInfo[sdVae] = append(f.modelToInfo[sdVae], info)
-		}
+		f.endpoints[key] = []string{endpoint, sdModel}
 	}
-
 }
 
-// input sdModel or sdVae return (sdModel && sdVae)
-func (f *FuncManager) getModelInfo(modelName string) []*SdModels {
-	// first get from cache
-	f.lock.RLock()
-	info, ok := f.modelToInfo[modelName]
-	f.lock.RUnlock()
-	if ok {
-		return info
+// check model->func exist
+func (f *FuncManager) funcExist(key string) bool {
+	if data, err := f.funcStore.Get(key, []string{datastore.KModelServiceEndPoint}); err != nil ||
+		data == nil || len(data) == 0 {
+		return false
+	} else {
+		return true
 	}
-
-	// second load db and update cache
-	f.lock.Lock()
-	f.loadFunc()
-	f.lock.Unlock()
-
-	// third get from cache
-	f.lock.RLock()
-	info, ok = f.modelToInfo[modelName]
-	f.lock.RUnlock()
-	if ok {
-		return info
-	}
-	return nil
+	return false
 }
 
 // write func into db
-func (f *FuncManager) putFunc(sdModel, sdVae, endpoint string) {
-	key := getKey(sdModel, sdVae)
+func (f *FuncManager) putFunc(key, functionName, sdModel, endpoint string) {
 	f.funcStore.Put(key, map[string]interface{}{
 		datastore.KModelServiceKey:            key,
 		datastore.KModelServiceSdModel:        sdModel,
-		datastore.KModelServiceSdVae:          sdVae,
+		datastore.KModelServiceFunctionName:   functionName,
 		datastore.KModelServiceEndPoint:       endpoint,
 		datastore.KModelServiceCreateTime:     fmt.Sprintf("%d", utils.TimestampS()),
 		datastore.KModelServiceLastModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
@@ -273,20 +282,15 @@ func getHttpTrigger() *fc.CreateTriggerRequest {
 	}
 }
 
-func getKey(sdModel, sdVae string) string {
-	return fmt.Sprintf("%s:%s", sdModel, sdVae)
-}
-
 // hash key, avoid generating invalid characters
 func getFunctionName(key string) string {
 	return fmt.Sprintf("sd_%s", utils.Hash(key))
 }
 
-func getEnv(sdModel, sdVae string) map[string]*string {
+func getEnv(sdModel string) map[string]*string {
 	env := map[string]*string{
 		config.SD_START_PARAMS:      utils.String(config.ConfigGlobal.ExtraArgs),
 		config.MODEL_SD:             utils.String(sdModel),
-		config.MODEL_SD_VAE:         utils.String(sdVae),
 		config.MODEL_REFRESH_SIGNAL: utils.String(fmt.Sprintf("%d", utils.TimestampS())), // value = now timestamp
 		config.OTS_INSTANCE:         utils.String(config.ConfigGlobal.OtsInstanceName),
 		config.OTS_ENDPOINT:         utils.String(config.ConfigGlobal.OtsEndpoint),

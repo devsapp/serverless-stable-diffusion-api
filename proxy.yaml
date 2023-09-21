@@ -8,6 +8,7 @@ otsEndpoint: https://sd-api-test.cn-beijing.ots.aliyuncs.com
 otsInstanceName: sd-api-t
 otsMaxVersion: 1
 otsTimeToAlive: -1
+listenInterval: 1
 # FC
 image: xxxx
 caPort: 7860
@@ -22,3 +23,4 @@ extraArgs: --api
 sessionExpire: 3600
 loginSwitch: off
 useLocalModel: yes
+flexMode: multiFunc
