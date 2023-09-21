@@ -57,6 +57,7 @@ func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, 
 	router.Use(gin.Logger(), gin.Recovery())
 	handler.RegisterHandlers(router, agentHandler)
 	if config.ConfigGlobal.ExposeToUser() {
+		router.GET("/", agentHandler.ReverseProxy)
 		// enable ReverserProxy
 		router.NoRoute(agentHandler.ReverseProxy)
 	}
