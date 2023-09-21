@@ -1,12 +1,16 @@
 package utils
 
 import (
+	"crypto/md5"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"gocv.io/x/gocv"
+	"io"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"net"
 	"os"
@@ -24,6 +28,17 @@ func RandStr(length int) string {
 		result = append(result, bytes[rand.Intn(len(bytes))])
 	}
 	return string(result)
+}
+
+func FileMD5(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	defer file.Close()
+	if err != nil {
+		return "", err
+	}
+	hash := md5.New()
+	_, _ = io.Copy(hash, file)
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 func Hash(s string) string {
@@ -79,7 +94,7 @@ func PortCheck(port string, timeout int) bool {
 	return false
 }
 
-func DeleteLocalModelFile(localFile string) (bool, error) {
+func DeleteLocalFile(localFile string) (bool, error) {
 	_, err := os.Stat(localFile)
 	if err == nil {
 		if err := os.Remove(localFile); err == nil {
@@ -138,4 +153,44 @@ func ListFile(path string) []string {
 
 	}
 	return fileSlice
+}
+
+// DiffSet check a == b ? return diff
+func DiffSet(old, new map[string]struct{}) ([]string, []string) {
+	del := make([]string, 0)
+	add := make([]string, 0)
+	for k := range old {
+		if _, ok := new[k]; !ok {
+			del = append(del, k)
+		}
+	}
+	for k := range new {
+		if _, ok := old[k]; !ok {
+			add = append(add, k)
+		}
+	}
+	return add, del
+}
+
+func IsSame(key string, a, b interface{}) bool {
+	switch a.(type) {
+	case []interface{}:
+		aT := a.([]interface{})
+		bT := b.([]interface{})
+		if len(aT) != len(bT) {
+			return false
+		}
+		for i, _ := range aT {
+			if aT[i] != bT[i] {
+				return false
+			}
+		}
+		return true
+	case int64, int32, int, int16, int8, string, float64, float32, bool:
+		return a == b
+	default:
+		log.Println(key, a, b)
+		log.Fatal("type not support")
+	}
+	return true
 }

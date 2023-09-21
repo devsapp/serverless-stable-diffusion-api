@@ -44,7 +44,12 @@ const (
 
 // sd api path
 const (
-	REFRESH_LORAS      = "/sdapi/v1/loras"
+	//REFRESH_LORAS      = "/sdapi/v1/refresh-loras"
+	//GET_LORAS          = "/sdapi/v1/loras"
+	GET_SD_MODEL       = "/sdapi/v1/sd-models"
+	REFRESH_SD_MODEL   = "/sdapi/v1/refresh-checkpoints"
+	GET_SD_VAE         = "/sdapi/v1/sd-vae"
+	REFRESH_VAE        = "/sdapi/v1/refresh-vae"
 	REFRESH_CONTROLNET = "/controlnet/model_list"
 	CANCEL             = "/sdapi/v1/interrupt"
 	TXT2IMG            = "/sdapi/v1/txt2img"
@@ -73,6 +78,9 @@ const (
 	OSS_MODE          = "OSS_MODE"
 	LOGINSWITCH       = "LOGIN_SWITCH"
 	USER_LOCAL_MODEL  = "USE_LOCAL_MODEL"
+	SD_IMAGE          = "SD_IMAGE"
+	FLEX_MODE         = "FLEX_MODE"
+	EXPOSE_TO_USER    = "EXPOSE_TO_USER"
 )
 
 // function http trigger
@@ -93,4 +101,11 @@ const (
 const (
 	LOCAL  = "local"
 	REMOTE = "remote"
+)
+
+type FlexMode int32
+
+const (
+	SingleFunc FlexMode = iota
+	MultiFunc
 )

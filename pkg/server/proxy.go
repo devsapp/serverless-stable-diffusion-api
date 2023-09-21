@@ -46,6 +46,11 @@ func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, 
 	if err := module.InitUserManager(userDataStore); err != nil {
 		return nil, err
 	}
+	// init listen event
+	listenTask := module.NewListenDbTask(config.ConfigGlobal.ListenInterval, taskDataStore, modelDataStore,
+		configDataStore)
+	// add config listen task
+	listenTask.AddTask("configTask", module.ConfigListen, module.ConfigEvent)
 	// init handler
 	proxyHandler := handler.NewProxyHandler(taskDataStore, modelDataStore, userDataStore, configDataStore)
 

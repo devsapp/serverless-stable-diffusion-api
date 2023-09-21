@@ -12,3 +12,4 @@ sdUrlPrefix: http://localhost:7861
 progressImageOutputSwitch: off
 sdPath: /stable-diffusion-webui
 useLocalModel: yes
+exposeToUser: No
