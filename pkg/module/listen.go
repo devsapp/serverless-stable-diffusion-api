@@ -260,7 +260,7 @@ func listModelFile(path string) map[string]struct{} {
 	ret := make(map[string]struct{})
 	for _, name := range files {
 		if strings.HasSuffix(name, ".pt") || strings.HasSuffix(name, ".ckpt") ||
-			strings.HasSuffix(name, ".safetensors") {
+			strings.HasSuffix(name, ".safetensors") || strings.HasSuffix(name, ".pth") {
 			ret[name] = struct{}{}
 		}
 	}
