@@ -26,18 +26,13 @@ type AgentServer struct {
 }
 
 func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, error) {
+	agentServer := new(AgentServer)
 	// init router
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
 	if config.ConfigGlobal.ExposeToUser() {
 		// enable ReverserProxy
 		router.Any("/*path", handler.ReverseProxy)
-		return &AgentServer{
-			srv: &http.Server{
-				Addr:    net.JoinHostPort("0.0.0.0", port),
-				Handler: router,
-			},
-		}, nil
 	} else {
 		// only api
 		// init oss manager
@@ -67,24 +62,23 @@ func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, 
 		}
 
 		handler.RegisterHandlers(router, agentHandler)
-
-		// make sure sd started
-		if !utils.PortCheck(config.ConfigGlobal.GetSDPort(), SD_START_TIMEOUT) {
-			log.Fatal("sd not start after 10min")
-			return nil, errors.New("sd not start after 10min")
-		}
-
-		return &AgentServer{
-			srv: &http.Server{
-				Addr:    net.JoinHostPort("0.0.0.0", port),
-				Handler: router,
-			},
-			listenTask:      listenTask,
-			taskDataStore:   taskDataStore,
-			modelDataStore:  modelDataStore,
-			configDataStore: configDataStore,
-		}, nil
+		agentServer.listenTask = listenTask
+		agentServer.taskDataStore = taskDataStore
+		agentServer.modelDataStore = modelDataStore
+		agentServer.configDataStore = configDataStore
 	}
+
+	// make sure sd started
+	if !utils.PortCheck(config.ConfigGlobal.GetSDPort(), SD_START_TIMEOUT) {
+		log.Fatal("sd not start after 10min")
+		return nil, errors.New("sd not start after 10min")
+	}
+	agentServer.srv = &http.Server{
+		Addr:    net.JoinHostPort("0.0.0.0", port),
+		Handler: router,
+	}
+	return agentServer, nil
+
 }
 
 // Start proxy server
