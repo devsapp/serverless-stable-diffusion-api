@@ -26,57 +26,65 @@ type AgentServer struct {
 }
 
 func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, error) {
-	// init oss manager
-	if err := module.NewOssManager(); err != nil {
-		log.Fatal("oss init fail")
-	}
-	tableFactory := datastore.DatastoreFactory{}
-	// init task table
-	taskDataStore := tableFactory.NewTable(dbType, datastore.KTaskTableName)
-	// init model table
-	modelDataStore := tableFactory.NewTable(dbType, datastore.KModelTableName)
-	// init config table
-	configDataStore := tableFactory.NewTable(dbType, datastore.KConfigTableName)
-	// init listen event
-	listenTask := module.NewListenDbTask(config.ConfigGlobal.ListenInterval, taskDataStore, modelDataStore,
-		configDataStore)
-	// add listen model change
-	listenTask.AddTask("modelTask", module.ModelListen, module.ModelChangeEvent)
-	// init handler
-	agentHandler := handler.NewAgentHandler(taskDataStore, modelDataStore, configDataStore, listenTask)
-
-	// update sd config.json
-	if !config.ConfigGlobal.ExposeToUser() {
-		if err := module.UpdateSdConfig(configDataStore); err != nil {
-			log.Fatal("sd config update fail")
-		}
-	}
-
 	// init router
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
-	handler.RegisterHandlers(router, agentHandler)
 	if config.ConfigGlobal.ExposeToUser() {
 		// enable ReverserProxy
-		router.NoRoute(agentHandler.ReverseProxy)
-	}
+		router.Any("/*path", handler.ReverseProxy)
+		return &AgentServer{
+			srv: &http.Server{
+				Addr:    net.JoinHostPort("0.0.0.0", port),
+				Handler: router,
+			},
+		}, nil
+	} else {
+		// only api
+		// init oss manager
+		if err := module.NewOssManager(); err != nil {
+			log.Fatal("oss init fail")
+		}
+		tableFactory := datastore.DatastoreFactory{}
+		// init task table
+		taskDataStore := tableFactory.NewTable(dbType, datastore.KTaskTableName)
+		// init model table
+		modelDataStore := tableFactory.NewTable(dbType, datastore.KModelTableName)
+		// init config table
+		configDataStore := tableFactory.NewTable(dbType, datastore.KConfigTableName)
+		// init listen event
+		listenTask := module.NewListenDbTask(config.ConfigGlobal.ListenInterval, taskDataStore, modelDataStore,
+			configDataStore)
+		// add listen model change
+		listenTask.AddTask("modelTask", module.ModelListen, module.ModelChangeEvent)
+		// init handler
+		agentHandler := handler.NewAgentHandler(taskDataStore, modelDataStore, configDataStore, listenTask)
 
-	// make sure sd started
-	if !utils.PortCheck(config.ConfigGlobal.GetSDPort(), SD_START_TIMEOUT) {
-		log.Fatal("sd not start after 10min")
-		return nil, errors.New("sd not start after 60s")
-	}
+		// update sd config.json
+		if !config.ConfigGlobal.ExposeToUser() {
+			if err := module.UpdateSdConfig(configDataStore); err != nil {
+				log.Fatal("sd config update fail")
+			}
+		}
 
-	return &AgentServer{
-		srv: &http.Server{
-			Addr:    net.JoinHostPort("0.0.0.0", port),
-			Handler: router,
-		},
-		listenTask:      listenTask,
-		taskDataStore:   taskDataStore,
-		modelDataStore:  modelDataStore,
-		configDataStore: configDataStore,
-	}, nil
+		handler.RegisterHandlers(router, agentHandler)
+
+		// make sure sd started
+		if !utils.PortCheck(config.ConfigGlobal.GetSDPort(), SD_START_TIMEOUT) {
+			log.Fatal("sd not start after 10min")
+			return nil, errors.New("sd not start after 10min")
+		}
+
+		return &AgentServer{
+			srv: &http.Server{
+				Addr:    net.JoinHostPort("0.0.0.0", port),
+				Handler: router,
+			},
+			listenTask:      listenTask,
+			taskDataStore:   taskDataStore,
+			modelDataStore:  modelDataStore,
+			configDataStore: configDataStore,
+		}, nil
+	}
 }
 
 // Start proxy server
@@ -91,10 +99,18 @@ func (p *AgentServer) Start() error {
 // Close shutdown proxy server, timeout=shutdownTimeout
 func (p *AgentServer) Close(shutdownTimeout time.Duration) error {
 	// close listen task
-	p.listenTask.Close()
-	p.taskDataStore.Close()
-	p.modelDataStore.Close()
-	p.configDataStore.Close()
+	if p.listenTask != nil {
+		p.listenTask.Close()
+	}
+	if p.taskDataStore != nil {
+		p.taskDataStore.Close()
+	}
+	if p.modelDataStore != nil {
+		p.modelDataStore.Close()
+	}
+	if p.configDataStore != nil {
+		p.configDataStore.Close()
+	}
 	// shutdown server
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()

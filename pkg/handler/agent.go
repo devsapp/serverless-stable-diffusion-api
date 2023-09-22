@@ -495,7 +495,7 @@ func (p *AgentHandler) Restart(c *gin.Context) {
 	c.String(http.StatusNotFound, "api not support")
 }
 
-func (p *AgentHandler) ReverseProxy(c *gin.Context) {
+func ReverseProxy(c *gin.Context) {
 	target := config.ConfigGlobal.SdUrlPrefix
 	remote, err := url.Parse(target)
 	if err != nil {
