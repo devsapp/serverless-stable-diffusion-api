@@ -109,4 +109,4 @@ nohup /agent/agent -port=7860 -dbType=tableStore -config=/agent/agent.yaml &>/ag
 
 echo "------start webui---------"
 
-python -u webui.py --nowebui --listen --port 7861 ${ARGS}
+python -u webui.py --listen --port 7861 ${ARGS}

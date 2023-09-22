@@ -19,7 +19,7 @@ instanceType: fc.gpu.tesla.1
 memorySize: 32768
 timeout: 600
 gpuMemorySize: 16384
-extraArgs: --api
+extraArgs: --api --nowebui
 sessionExpire: 3600
 loginSwitch: off
 useLocalModel: yes
