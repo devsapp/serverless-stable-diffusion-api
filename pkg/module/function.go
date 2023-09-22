@@ -69,7 +69,6 @@ func (f *FuncManager) GetEndpoint(sdModel string) (string, error) {
 	if config.ConfigGlobal.GetFlexMode() == config.MultiFunc {
 		key = sdModel
 	}
-	log.Println(key, sdModel)
 	// retry
 	reTry := 2
 	for reTry > 0 {
