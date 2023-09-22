@@ -338,50 +338,69 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
 		return
 	}
-	// init taskId
-	taskId := utils.RandStr(taskIdLength)
+	// taskId
+	taskId := c.GetHeader(taskKey)
+	if taskId == "" {
+		// init taskId
+		taskId = utils.RandStr(taskIdLength)
+	}
 	log.Println("taskid:", taskId)
-	// check request valid: sdModel and sdVae exist
-	if existed := p.checkModelExist(request.StableDiffusionModel, request.SdVae); !existed {
-		handleError(c, http.StatusNotFound, "model not found, please check request")
-		return
-	}
-	// write db
-	if err := p.taskStore.Put(taskId, map[string]interface{}{
-		datastore.KTaskIdColumnName: taskId,
-		datastore.KTaskUser:         username,
-		datastore.KTaskCancel:       int64(config.CANCEL_INIT),
-		datastore.KTaskCreateTime:   fmt.Sprintf("%d", utils.TimestampS()),
-	}); err != nil {
-		log.Println("[Error] put db err=", err.Error())
-		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
-			TaskId:  taskId,
-			Status:  config.TASK_FAILED,
-			Message: utils.String(config.INTERNALERROR),
-		})
-		return
-	}
 
-	// get endPoint
-	sdModel := request.StableDiffusionModel
-	endPoint, err := module.FuncManagerGlobal.GetEndpoint(sdModel)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
-			TaskId:  taskId,
-			Status:  config.TASK_FAILED,
-			Message: utils.String(config.NOFOUNDENDPOINT),
-		})
-		return
+	endPoint := config.ConfigGlobal.Downstream
+	var err error
+	version := c.GetHeader(versionKey)
+	if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
+		// get endPoint
+		sdModel := request.StableDiffusionModel
+		endPoint, err = module.FuncManagerGlobal.GetEndpoint(sdModel)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
+				TaskId:  taskId,
+				Status:  config.TASK_FAILED,
+				Message: utils.String(config.NOFOUNDENDPOINT),
+			})
+			return
+		}
 	}
-	// get user current config version
-	userItem, err := p.userStore.Get(username, []string{datastore.KUserConfigVer})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
-			TaskId:  taskId,
-			Status:  config.TASK_FAILED,
-			Message: utils.String(config.INTERNALERROR),
-		})
-		return
+	if config.ConfigGlobal.IsServerTypeMatch(config.PROXY) {
+		// check request valid: sdModel and sdVae exist
+		if existed := p.checkModelExist(request.StableDiffusionModel, request.SdVae); !existed {
+			handleError(c, http.StatusNotFound, "model not found, please check request")
+			return
+		}
+		// write db
+		if err := p.taskStore.Put(taskId, map[string]interface{}{
+			datastore.KTaskIdColumnName: taskId,
+			datastore.KTaskUser:         username,
+			datastore.KTaskCancel:       int64(config.CANCEL_INIT),
+			datastore.KTaskCreateTime:   fmt.Sprintf("%d", utils.TimestampS()),
+		}); err != nil {
+			log.Println("[Error] put db err=", err.Error())
+			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
+				TaskId:  taskId,
+				Status:  config.TASK_FAILED,
+				Message: utils.String(config.INTERNALERROR),
+			})
+			return
+		}
+
+		// get user current config version
+		userItem, err := p.userStore.Get(username, []string{datastore.KUserConfigVer})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
+				TaskId:  taskId,
+				Status:  config.TASK_FAILED,
+				Message: utils.String(config.INTERNALERROR),
+			})
+			return
+		}
+		version = func() string {
+			if version, ok := userItem[datastore.KUserConfigVer]; !ok {
+				return "-1"
+			} else {
+				return version.(string)
+			}
+		}()
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), config.HTTPTIMEOUT)
 	defer cancel()
@@ -391,13 +410,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 	resp, err := client.Txt2Img(ctx, *request, func(ctx context.Context, req *http.Request) error {
 		req.Header.Add(userKey, username)
 		req.Header.Add(taskKey, taskId)
-		req.Header.Add(versionKey, func() string {
-			if version, ok := userItem[datastore.KUserConfigVer]; !ok {
-				return "-1"
-			} else {
-				return version.(string)
-			}
-		}())
+		req.Header.Add(versionKey, version)
 		if isAsync(invokeType) {
 			req.Header.Add(FcAsyncKey, "Async")
 		}
@@ -448,52 +461,69 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
 		return
 	}
-	// init taskId
-	taskId := utils.RandStr(taskIdLength)
-
-	// check request valid: sdModel and sdVae exist
-	if existed := p.checkModelExist(request.StableDiffusionModel, request.SdVae); !existed {
-		handleError(c, http.StatusNotFound, "model not found, please check request")
-		return
+	// taskId
+	taskId := c.GetHeader(taskKey)
+	if taskId == "" {
+		// init taskId
+		taskId = utils.RandStr(taskIdLength)
 	}
+	log.Println("taskid:", taskId)
 
-	// write db
-	if err := p.taskStore.Put(taskId, map[string]interface{}{
-		datastore.KTaskIdColumnName: taskId,
-		datastore.KTaskUser:         username,
-		datastore.KTaskCancel:       int64(config.CANCEL_INIT),
-		datastore.KTaskCreateTime:   fmt.Sprintf("%d", utils.TimestampS()),
-	}); err != nil {
-		log.Println("[Error] put db err=", err.Error())
-		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
-			TaskId:  taskId,
-			Status:  config.TASK_FAILED,
-			Message: utils.String(config.INTERNALERROR),
-		})
-		return
+	endPoint := config.ConfigGlobal.Downstream
+	var err error
+	version := c.GetHeader(versionKey)
+	if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
+		// get endPoint
+		sdModel := request.StableDiffusionModel
+		endPoint, err = module.FuncManagerGlobal.GetEndpoint(sdModel)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
+				TaskId:  taskId,
+				Status:  config.TASK_FAILED,
+				Message: utils.String(config.NOFOUNDENDPOINT),
+			})
+			return
+		}
 	}
+	if config.ConfigGlobal.IsServerTypeMatch(config.PROXY) {
+		// check request valid: sdModel and sdVae exist
+		if existed := p.checkModelExist(request.StableDiffusionModel, request.SdVae); !existed {
+			handleError(c, http.StatusNotFound, "model not found, please check request")
+			return
+		}
+		// write db
+		if err := p.taskStore.Put(taskId, map[string]interface{}{
+			datastore.KTaskIdColumnName: taskId,
+			datastore.KTaskUser:         username,
+			datastore.KTaskCancel:       int64(config.CANCEL_INIT),
+			datastore.KTaskCreateTime:   fmt.Sprintf("%d", utils.TimestampS()),
+		}); err != nil {
+			log.Println("[Error] put db err=", err.Error())
+			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
+				TaskId:  taskId,
+				Status:  config.TASK_FAILED,
+				Message: utils.String(config.INTERNALERROR),
+			})
+			return
+		}
 
-	// get endPoint
-	sdModel := request.StableDiffusionModel
-	endPoint, err := module.FuncManagerGlobal.GetEndpoint(sdModel)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
-			TaskId:  taskId,
-			Status:  config.TASK_FAILED,
-			Message: utils.String(config.NOFOUNDENDPOINT),
-		})
-		return
-	}
-
-	// get user current config version
-	userItem, err := p.userStore.Get(username, []string{datastore.KUserConfigVer})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
-			TaskId:  taskId,
-			Status:  config.TASK_FAILED,
-			Message: utils.String(config.INTERNALERROR),
-		})
-		return
+		// get user current config version
+		userItem, err := p.userStore.Get(username, []string{datastore.KUserConfigVer})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
+				TaskId:  taskId,
+				Status:  config.TASK_FAILED,
+				Message: utils.String(config.INTERNALERROR),
+			})
+			return
+		}
+		version = func() string {
+			if version, ok := userItem[datastore.KUserConfigVer]; !ok {
+				return "-1"
+			} else {
+				return version.(string)
+			}
+		}()
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), config.HTTPTIMEOUT)
 	defer cancel()
@@ -503,13 +533,7 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 	resp, err := client.Img2Img(ctx, *request, func(ctx context.Context, req *http.Request) error {
 		req.Header.Add(userKey, username)
 		req.Header.Add(taskKey, taskId)
-		req.Header.Add(versionKey, func() string {
-			if version, ok := userItem[datastore.KUserConfigVer]; !ok {
-				return "-1"
-			} else {
-				return version.(string)
-			}
-		}())
+		req.Header.Add(versionKey, version)
 		if isAsync(invokeType) {
 			req.Header.Add(FcAsyncKey, "Async")
 		}
@@ -700,6 +724,10 @@ func ApiAuth() gin.HandlerFunc {
 }
 
 func isAsync(invokeType string) bool {
+	// control server default sync
+	if config.ConfigGlobal.GetFlexMode() == config.MultiFunc && config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
+		return false
+	}
 	if invokeType == "sync" {
 		return false
 	}

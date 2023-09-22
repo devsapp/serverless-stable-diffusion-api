@@ -10,7 +10,6 @@ otsMaxVersion: 1
 otsTimeToAlive: -1
 listenInterval: 1
 # FC
-image: xxxx
 caPort: 7860
 CPU: 8
 diskSize: 512
@@ -21,6 +20,7 @@ timeout: 600
 gpuMemorySize: 16384
 extraArgs: --api --nowebui
 sessionExpire: 3600
-loginSwitch: off
-useLocalModel: yes
-flexMode: multiFunc
+loginSwitch: off  #value: off|on
+useLocalModel: yes  #value: yes|no
+flexMode: multiFunc  # value: singleFunc|multiFunc
+serverName: proxy  # value: proxy|agent|control

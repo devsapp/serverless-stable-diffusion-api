@@ -57,6 +57,10 @@ type ConfigYaml struct {
 
 	// agent expose to user or not
 	Expose string `yaml:"exposeToUser"`
+
+	// proxy or control or agent
+	ServerName string `yaml:"serverName"`
+	Downstream string `yaml:"downstream"`
 }
 
 type ConfigEnv struct {
@@ -72,6 +76,14 @@ type ConfigEnv struct {
 type Config struct {
 	ConfigYaml
 	ConfigEnv
+}
+
+// IsServerTypeMatch Identify whether serverName == name
+func (c *Config) IsServerTypeMatch(name string) bool {
+	if c.GetFlexMode() == SingleFunc {
+		return true
+	}
+	return c.ServerName == name
 }
 
 func (c *Config) ExposeToUser() bool {
@@ -157,6 +169,15 @@ func (c *Config) updateFromEnv() {
 		c.Expose = exposeToUser
 	}
 
+	// proxy
+	serverName := os.Getenv(SERVER_NAME)
+	downstream := os.Getenv(DOWNSTREAM)
+	if serverName != "" {
+		c.ServerName = serverName
+	}
+	if downstream != "" {
+		c.Downstream = downstream
+	}
 }
 
 func InitConfig(fn string) error {
@@ -190,5 +211,8 @@ func InitConfig(fn string) error {
 	}
 	// env cover yaml
 	ConfigGlobal.updateFromEnv()
+	if ConfigGlobal.ServerName == PROXY && ConfigGlobal.Downstream == "" {
+		return errors.New("proxy need set downstream")
+	}
 	return nil
 }
