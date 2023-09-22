@@ -81,6 +81,8 @@ const (
 	SD_IMAGE          = "SD_IMAGE"
 	FLEX_MODE         = "FLEX_MODE"
 	EXPOSE_TO_USER    = "EXPOSE_TO_USER"
+	SERVER_NAME       = "SERVER_NAME"
+	DOWNSTREAM        = "DOWNSTREAM"
 )
 
 // function http trigger
@@ -108,4 +110,10 @@ type FlexMode int32
 const (
 	SingleFunc FlexMode = iota
 	MultiFunc
+)
+
+const (
+	PROXY   = "proxy"
+	AGENT   = "agent"
+	CONTROL = "control"
 )

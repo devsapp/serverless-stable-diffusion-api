@@ -34,23 +34,26 @@ func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, 
 	modelDataStore := tableFactory.NewTable(dbType, datastore.KModelTableName)
 	// init user table
 	userDataStore := tableFactory.NewTable(dbType, datastore.KUserTableName)
-	// init config table
-	configDataStore := tableFactory.NewTable(dbType, datastore.KConfigTableName)
-	// init function table
-	funcDataStore := tableFactory.NewTable(dbType, datastore.KModelServiceTableName)
-	// init func manager
-	if err := module.InitFuncManager(funcDataStore); err != nil {
-		return nil, err
-	}
-
 	if err := module.InitUserManager(userDataStore); err != nil {
 		return nil, err
 	}
-	// init listen event
-	listenTask := module.NewListenDbTask(config.ConfigGlobal.ListenInterval, taskDataStore, modelDataStore,
-		configDataStore)
-	// add config listen task
-	listenTask.AddTask("configTask", module.ConfigListen, module.ConfigEvent)
+	// init config table
+	configDataStore := tableFactory.NewTable(dbType, datastore.KConfigTableName)
+
+	var funcDataStore datastore.Datastore
+	if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
+		// init function table
+		funcDataStore = tableFactory.NewTable(dbType, datastore.KModelServiceTableName)
+		// init func manager
+		if err := module.InitFuncManager(funcDataStore); err != nil {
+			return nil, err
+		}
+		// init listen event
+		listenTask := module.NewListenDbTask(config.ConfigGlobal.ListenInterval, taskDataStore, modelDataStore,
+			configDataStore)
+		// add config listen task
+		listenTask.AddTask("configTask", module.ConfigListen, module.ConfigEvent)
+	}
 	// init handler
 	proxyHandler := handler.NewProxyHandler(taskDataStore, modelDataStore, userDataStore, configDataStore)
 
@@ -88,11 +91,21 @@ func (p *ProxyServer) Start() error {
 
 // Close shutdown proxy server, timeout=shutdownTimeout
 func (p *ProxyServer) Close(shutdownTimeout time.Duration) error {
-	p.userDataStore.Close()
-	p.taskDataStore.Close()
-	p.modelDataStore.Close()
-	p.funcDataStore.Close()
-	p.configStore.Close()
+	if p.userDataStore != nil {
+		p.userDataStore.Close()
+	}
+	if p.taskDataStore != nil {
+		p.taskDataStore.Close()
+	}
+	if p.modelDataStore != nil {
+		p.modelDataStore.Close()
+	}
+	if p.funcDataStore != nil {
+		p.funcDataStore.Close()
+	}
+	if p.configStore != nil {
+		p.configStore.Close()
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := p.srv.Shutdown(ctx); err != nil {
