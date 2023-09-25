@@ -420,7 +420,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 		if err != nil {
 			log.Println(err.Error())
 		} else {
-			log.Println(resp)
+			log.Printf("%v", resp)
 		}
 		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 			TaskId:  taskId,
@@ -662,21 +662,30 @@ func (p *ProxyHandler) checkModelExist(sdModel, sdVae string) bool {
 		case config.SD_MODEL:
 			sdModelPath := fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "Stable-diffusion", sdModel)
 			if !utils.FileExists(sdModelPath) {
+				// list check image models
+				path := fmt.Sprintf("%s/models/%s", config.ConfigGlobal.SdPath, "Stable-diffusion")
+				tmp := utils.ListFile(path)
+				for _, one := range tmp {
+					if one == sdModel {
+						return true
+					}
+				}
 				return false
 			}
 		case config.MODEL_SD_VAE:
 			sdVaePath := fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "VAE", sdVae)
 			if !utils.FileExists(sdVaePath) {
+				// list check image models
+				path := fmt.Sprintf("%s/models/%s", config.ConfigGlobal.SdPath, "VAE")
+				tmp := utils.ListFile(path)
+				for _, one := range tmp {
+					if one == sdVae {
+						return true
+					}
+				}
 				return false
 			}
 		}
-		// check remote db existed
-		// check sdModel
-		//if data, err := p.modelStore.Get(model[1], []string{datastore.KModelStatus}); err != nil || data == nil || len(data) == 0 {
-		//	return false
-		//} else if data[datastore.KModelStatus] == config.MODEL_DELETE {
-		//	return false
-		//}
 	}
 	return true
 }
