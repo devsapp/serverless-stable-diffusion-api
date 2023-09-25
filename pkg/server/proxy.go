@@ -39,15 +39,14 @@ func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, 
 	}
 	// init config table
 	configDataStore := tableFactory.NewTable(dbType, datastore.KConfigTableName)
+	// init function table
+	funcDataStore := tableFactory.NewTable(dbType, datastore.KModelServiceTableName)
+	// init func manager
+	if err := module.InitFuncManager(funcDataStore); err != nil {
+		return nil, err
+	}
 
-	var funcDataStore datastore.Datastore
 	if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
-		// init function table
-		funcDataStore = tableFactory.NewTable(dbType, datastore.KModelServiceTableName)
-		// init func manager
-		if err := module.InitFuncManager(funcDataStore); err != nil {
-			return nil, err
-		}
 		// init listen event
 		listenTask := module.NewListenDbTask(config.ConfigGlobal.ListenInterval, taskDataStore, modelDataStore,
 			configDataStore)
