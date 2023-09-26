@@ -103,7 +103,7 @@ func listModelFile(path, modelType string) (modelAttrs []*models.ModelAttributes
 	files := utils.ListFile(path)
 	for _, name := range files {
 		if strings.HasSuffix(name, ".pt") || strings.HasSuffix(name, ".ckpt") ||
-			strings.HasSuffix(name, ".safetensors") {
+			strings.HasSuffix(name, ".safetensors") || strings.HasSuffix(name, ".pth") {
 			modelAttrs = append(modelAttrs, &models.ModelAttributes{
 				Type:   modelType,
 				Name:   name,

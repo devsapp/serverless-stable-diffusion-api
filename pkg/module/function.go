@@ -185,7 +185,7 @@ func (f *FuncManager) loadFunc() {
 		datastore.KModelServiceSdModel, datastore.KModelServerImage})
 	for _, data := range funcAll {
 		key := data[datastore.KModelServiceKey].(string)
-		image := data[datastore.KModelServerImage]
+		image := data[datastore.KModelServerImage].(string)
 		if image != config.ConfigGlobal.Image {
 			// update function image
 			f.UpdateFunctionImage(key)
@@ -219,6 +219,7 @@ func (f *FuncManager) putFunc(key, functionName, sdModel, endpoint string) {
 		datastore.KModelServiceSdModel:        sdModel,
 		datastore.KModelServiceFunctionName:   functionName,
 		datastore.KModelServiceEndPoint:       endpoint,
+		datastore.KModelServerImage:           config.ConfigGlobal.Image,
 		datastore.KModelServiceCreateTime:     fmt.Sprintf("%d", utils.TimestampS()),
 		datastore.KModelServiceLastModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
 	})
