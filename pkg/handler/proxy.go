@@ -305,7 +305,8 @@ func (p *ProxyHandler) UpdateModel(c *gin.Context, modelName string) {
 // GetTaskProgress get predict progress
 // (GET /tasks/{taskId}/progress)
 func (p *ProxyHandler) GetTaskProgress(c *gin.Context, taskId string) {
-	data, err := p.taskStore.Get(taskId, []string{datastore.KTaskIdColumnName, datastore.KTaskProgressColumnName})
+	data, err := p.taskStore.Get(taskId, []string{datastore.KTaskIdColumnName, datastore.KTaskStatus,
+		datastore.KTaskProgressColumnName})
 	if err != nil || data == nil || len(data) == 0 {
 		handleError(c, http.StatusNotFound, config.NOTFOUND)
 		return
@@ -316,6 +317,9 @@ func (p *ProxyHandler) GetTaskProgress(c *gin.Context, taskId string) {
 			handleError(c, http.StatusInternalServerError, config.NOTFOUND)
 			return
 		}
+	}
+	if status, ok := data[datastore.KTaskStatus]; ok && (status == config.TASK_FINISH || status == config.TASK_FAILED) {
+		resp.Progress = 100
 	}
 	resp.TaskId = taskId
 	c.JSON(http.StatusOK, resp)
