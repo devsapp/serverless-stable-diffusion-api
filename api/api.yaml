@@ -753,11 +753,14 @@ components:
       description: one task result, include taskId/images/parameters/info
       required:
         - taskId
-        - images
+        - status
       properties:
         taskId:
           type: string
           example: "task123456"
+        status:
+          type: string
+          example: "waiting|running|succeeded|failed"
         images:
           description: one task image result, len(images)>1 when batch count or batch size > 1
           type: array

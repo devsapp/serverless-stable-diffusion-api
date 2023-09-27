@@ -88,7 +88,7 @@ func (p *ProxyHandler) CancelTask(c *gin.Context, taskId string) {
 	c.JSON(http.StatusOK, gin.H{"message": "success"})
 }
 
-// GetTaskResult GetTaskResult get predict progress
+// GetTaskResult  get predict progress
 // (GET /tasks/{taskId}/result)
 func (p *ProxyHandler) GetTaskResult(c *gin.Context, taskId string) {
 	result, err := p.getTaskResult(taskId)
@@ -374,6 +374,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 		if err := p.taskStore.Put(taskId, map[string]interface{}{
 			datastore.KTaskIdColumnName: taskId,
 			datastore.KTaskUser:         username,
+			datastore.KTaskStatus:       config.TASK_QUEUE,
 			datastore.KTaskCancel:       int64(config.CANCEL_INIT),
 			datastore.KTaskCreateTime:   fmt.Sprintf("%d", utils.TimestampS()),
 		}); err != nil {
@@ -497,6 +498,7 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 		if err := p.taskStore.Put(taskId, map[string]interface{}{
 			datastore.KTaskIdColumnName: taskId,
 			datastore.KTaskUser:         username,
+			datastore.KTaskStatus:       config.TASK_QUEUE,
 			datastore.KTaskCancel:       int64(config.CANCEL_INIT),
 			datastore.KTaskCreateTime:   fmt.Sprintf("%d", utils.TimestampS()),
 		}); err != nil {
@@ -620,22 +622,34 @@ func (p *ProxyHandler) UpdateOptions(c *gin.Context) {
 func (p *ProxyHandler) getTaskResult(taskId string) (*models.TaskResultResponse, error) {
 	result := &models.TaskResultResponse{
 		TaskId:     taskId,
+		Status:     config.TASK_QUEUE,
 		Parameters: new(map[string]interface{}),
 		Info:       new(map[string]interface{}),
+		Images:     new([]string),
 	}
-	data, err := p.taskStore.Get(taskId, []string{datastore.KTaskImage, datastore.KTaskInfo,
+	data, err := p.taskStore.Get(taskId, []string{datastore.KTaskStatus, datastore.KTaskImage, datastore.KTaskInfo,
 		datastore.KTaskParams, datastore.KTaskCode})
 	if err != nil || data == nil || len(data) == 0 {
 		return nil, errors.New("not found")
 	}
+
+	// not success
+	if status, ok := data[datastore.KTaskStatus]; ok && (status != config.TASK_FINISH) {
+		result.Status = status.(string)
+		return result, nil
+	} else if ok {
+		result.Status = config.TASK_FINISH
+	}
+
 	if code, ok := data[datastore.KTaskCode]; ok && code.(int64) != requestOk {
-		return nil, fmt.Errorf("task:%s predict fail", taskId)
+		result.Status = config.TASK_FAILED
+		return result, nil
 	} else if !ok {
 		return nil, fmt.Errorf("task:%s predict fail", taskId)
 	}
 
 	// images
-	result.Images = strings.Split(data[datastore.KTaskImage].(string), ",")
+	*result.Images = strings.Split(data[datastore.KTaskImage].(string), ",")
 	// params
 	paramsStr := data[datastore.KTaskParams].(string)
 	var m map[string]interface{}
