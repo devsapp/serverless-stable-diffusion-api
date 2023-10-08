@@ -395,6 +395,15 @@ func preprocessRequest(req any) error {
 			(*request.InitImages)[i] = *base64
 		}
 
+		// mask images: ossPath to base64St
+		if request.Mask != nil && isImgPath(*request.Mask) {
+			base64, err := module.OssGlobal.DownloadFileToBase64(*request.Mask)
+			if err != nil {
+				return err
+			}
+			*request.Mask = *base64
+		}
+
 		// controlNet images: ossPath to base64Str
 		if request.AlwaysonScripts != nil {
 			return updateControlNet(request.AlwaysonScripts)
