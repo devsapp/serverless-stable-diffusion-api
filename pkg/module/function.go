@@ -197,7 +197,8 @@ func (f *FuncManager) loadFunc() {
 	for _, data := range funcAll {
 		key := data[datastore.KModelServiceKey].(string)
 		image := data[datastore.KModelServerImage].(string)
-		if image != config.ConfigGlobal.Image {
+		if image != "" && config.ConfigGlobal.Image != "" &&
+			image != config.ConfigGlobal.Image {
 			// update function image
 			f.UpdateFunctionImage(key)
 			// update db
