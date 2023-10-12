@@ -20,7 +20,8 @@ import (
 const (
 	SD_CONFIG         = "config.json"
 	SD_START_TIMEOUT  = 2 * 60 * 1000 // 2min
-	SD_DETECT_TIMEOUT = 5 * 1000      // 5s
+	SD_DETECT_TIMEOUT = 10 * 1000     // 10s
+	SD_DETECT_RETEY   = 6             // detect 6 fail
 )
 
 type SDManager struct {
@@ -72,9 +73,15 @@ func (s *SDManager) init() error {
 }
 
 func (s *SDManager) detectAlive() {
+	retry := SD_DETECT_RETEY
 	for s.flag {
 		time.Sleep(time.Duration(SD_DETECT_TIMEOUT) * time.Millisecond)
 		if !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) {
+			retry--
+		} else {
+			retry = SD_DETECT_RETEY
+		}
+		if retry <= 0 {
 			s.Close()
 			logrus.Fatal("sd service not alive")
 		}

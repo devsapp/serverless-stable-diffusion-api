@@ -216,6 +216,7 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 	}
 	if err := a.updateOverrideSettingsRequest(request.OverrideSettings, username, configVer,
 		request.StableDiffusionModel, request.SdVae); err != nil {
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("update OverrideSettings err=%s", err.Error())
 		handleError(c, http.StatusInternalServerError, "please check config")
 		return
 	}
@@ -225,6 +226,7 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 	if err := a.taskStore.Update(taskId, map[string]interface{}{
 		datastore.KTaskStatus: config.TASK_INPROGRESS,
 	}); err != nil {
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("put db err=%s", err.Error())
 		handleError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
