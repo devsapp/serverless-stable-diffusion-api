@@ -7,9 +7,9 @@ import (
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
+	"github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -103,7 +103,7 @@ func (l *ListenDbTask) configTask(item *TaskItem) {
 	configPath := fmt.Sprintf("%s/%s", config.ConfigGlobal.SdPath, SD_CONFIG)
 	md5New := ""
 	if !utils.FileExists(configPath) {
-		log.Printf("[configTask] file %s not exist", configPath)
+		logrus.Infof("[configTask] file %s not exist", configPath)
 	} else {
 		md5New, _ = utils.FileMD5(configPath)
 	}
@@ -112,7 +112,7 @@ func (l *ListenDbTask) configTask(item *TaskItem) {
 		configNew, _ := ioutil.ReadFile(configPath)
 		// diff config content
 		if configOld == "" || !isSameConfig([]byte(configOld), configNew) {
-			log.Println("[configTask] update config")
+			logrus.Info("[configTask] update config")
 			// update success
 			if err := updateConfig(configNew, md5New, l.configStore); err == nil {
 				confSignal.md5 = md5New
@@ -132,7 +132,7 @@ func (l *ListenDbTask) modelTask(item *TaskItem) {
 	curVal := listModelFile(path)
 	add, del := utils.DiffSet(oldVal, curVal)
 	if len(add) != 0 || len(del) != 0 {
-		log.Printf("[modelTask] controlnet model change add: %s, del: %s",
+		logrus.Infof("[modelTask] controlnet model change add: %s, del: %s",
 			strings.Join(add, ","), strings.Join(del, ","))
 		item.curVal = &curVal
 		item.callBack(config.CONTORLNET_MODEL)
@@ -143,7 +143,7 @@ func (l *ListenDbTask) modelTask(item *TaskItem) {
 		curVal := listModelFile(path)
 		add, del := utils.DiffSet(oldVal, curVal)
 		if len(add) != 0 || len(del) != 0 {
-			log.Printf("[modelTask] vae model change add: %s, del: %s",
+			logrus.Infof("[modelTask] vae model change add: %s, del: %s",
 				strings.Join(add, ","), strings.Join(del, ","))
 			item.callBack(config.SD_VAE)
 		}
@@ -154,7 +154,7 @@ func (l *ListenDbTask) modelTask(item *TaskItem) {
 		curVal := listModelFile(path)
 		add, del := utils.DiffSet(oldVal, curVal)
 		if len(add) != 0 || len(del) != 0 {
-			log.Printf("[modelTask] Stable-diffusion model change add: %s, del: %s",
+			logrus.Infof("[modelTask] Stable-diffusion model change add: %s, del: %s",
 				strings.Join(add, ","), strings.Join(del, ","))
 			item.callBack(config.SD_MODEL)
 		}
@@ -201,7 +201,7 @@ func (l *ListenDbTask) AddTask(key string, listenType ListenType, callBack CallB
 		// read db
 		data, err := l.configStore.Get(ConfigDefaultKey, []string{datastore.KConfigMd5, datastore.KConfigVal})
 		if err != nil {
-			log.Fatal("[AddTask] read config db error:", err.Error())
+			logrus.Fatal("[AddTask] read config db error:", err.Error())
 		}
 		md5Old := ""
 		configOld := ""
@@ -212,7 +212,7 @@ func (l *ListenDbTask) AddTask(key string, listenType ListenType, callBack CallB
 		md5New := ""
 		configPath := fmt.Sprintf("%s/%s", config.ConfigGlobal.SdPath, SD_CONFIG)
 		if !utils.FileExists(configPath) {
-			log.Printf("file %s not exist", configPath)
+			logrus.Infof("file %s not exist", configPath)
 		} else {
 			md5New, _ = utils.FileMD5(configPath)
 		}
@@ -221,13 +221,13 @@ func (l *ListenDbTask) AddTask(key string, listenType ListenType, callBack CallB
 			configNew, _ := ioutil.ReadFile(configPath)
 			if configOld == "" {
 				if err := putConfig(configNew, md5New, l.configStore); err == nil {
-					log.Println("[AddTask] put config")
+					logrus.Info("[AddTask] put config")
 					md5Old = md5New
 					configOld = string(configNew)
 				}
 			} else if !isSameConfig([]byte(configOld), configNew) {
 				// diff config content
-				log.Println("[AddTask] update config")
+				logrus.Info("[AddTask] update config")
 				// update success
 				if err := updateConfig(configNew, md5New, l.configStore); err == nil {
 					md5Old = md5New
@@ -270,7 +270,7 @@ func listModelFile(path string) map[string]struct{} {
 func updateConfig(data []byte, md5 string, configStore datastore.Datastore) error {
 	// check data valid
 	if !json.Valid(data) {
-		log.Printf("[updateConfig] config json not valid, please check")
+		logrus.Info("[updateConfig] config json not valid, please check")
 		return errors.New("config not valid json")
 	}
 	if err := configStore.Update(ConfigDefaultKey, map[string]interface{}{
@@ -278,7 +278,7 @@ func updateConfig(data []byte, md5 string, configStore datastore.Datastore) erro
 		datastore.KConfigVal:        string(data),
 		datastore.KConfigModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
 	}); err != nil {
-		log.Printf("[updateConfig] update db error")
+		logrus.Info("[updateConfig] update db error")
 		return err
 	}
 	return nil
@@ -287,7 +287,7 @@ func updateConfig(data []byte, md5 string, configStore datastore.Datastore) erro
 func putConfig(data []byte, md5 string, configStore datastore.Datastore) error {
 	// check data valid
 	if !json.Valid(data) {
-		log.Printf("[putConfig] config json not valid, please check")
+		logrus.Info("[putConfig] config json not valid, please check")
 		return errors.New("config not valid json")
 	}
 	if err := configStore.Put(ConfigDefaultKey, map[string]interface{}{
@@ -296,7 +296,7 @@ func putConfig(data []byte, md5 string, configStore datastore.Datastore) error {
 		datastore.KConfigModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
 		datastore.KConfigCreateTime: fmt.Sprintf("%d", utils.TimestampS()),
 	}); err != nil {
-		log.Printf("[putConfig] put db error")
+		logrus.Info("[putConfig] put db error")
 		return err
 	}
 	return nil
@@ -362,12 +362,12 @@ func isSameConfig(old, new []byte) bool {
 	}
 	var oldMap map[string]interface{}
 	if err := json.Unmarshal(old, &oldMap); err != nil {
-		log.Println(err.Error())
+		logrus.Info(err.Error())
 		return true
 	}
 	var newMap map[string]interface{}
 	if err := json.Unmarshal(new, &newMap); err != nil {
-		log.Println(err.Error())
+		logrus.Info(err.Error())
 		return true
 	}
 	for key, val := range newMap {

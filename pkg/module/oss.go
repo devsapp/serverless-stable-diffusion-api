@@ -87,21 +87,7 @@ func (o *OssManagerRemote) DownloadFileToBase64(ossKey string) (*string, error) 
 	if err != nil {
 		return nil, err
 	}
-	//// cv decode image
-	//imageMat, err := gocv.IMDecode(data, gocv.IMReadColor)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//fileExt, err := utils.ImageType(ossKey)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//imageBytes, err := gocv.IMEncode(fileExt, imageMat)
-	//if err != nil {
-	//	return nil, err
-	//}
 	// image to base64
-	//imageBase64 := base64.StdEncoding.EncodeToString(imageBytes.GetBytes())
 	imageBase64 := base64.StdEncoding.EncodeToString(data)
 	return &imageBase64, nil
 }
@@ -157,9 +143,4 @@ func (o *OssManagerLocal) DownloadFileToBase64(ossKey string) (*string, error) {
 	}
 	imageBase64 := base64.StdEncoding.EncodeToString(data)
 	return &imageBase64, nil
-	//fileExt, err := utils.ImageType(ossKey)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//return utils.ImageToBase64(destFile, fileExt)
 }

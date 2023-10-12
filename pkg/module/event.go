@@ -3,7 +3,7 @@ package module
 import (
 	"fmt"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
-	"log"
+	"github.com/sirupsen/logrus"
 	"net/http"
 )
 
@@ -25,14 +25,14 @@ func ModelChangeEvent(v any) {
 		path = config.REFRESH_VAE
 		method = "POST"
 	default:
-		log.Printf("[ModelChangeEvent] modelType=%s no need reload", modelType)
+		logrus.Infof("[ModelChangeEvent] modelType=%s no need reload", modelType)
 		return
 	}
 	url := fmt.Sprintf("%s%s", config.ConfigGlobal.SdUrlPrefix, path)
 	req, _ := http.NewRequest(method, url, nil)
 	_, err := client.Do(req)
 	if err != nil {
-		log.Println("[ModelChangeEvent] listen model refresh do fail")
+		logrus.Info("[ModelChangeEvent] listen model refresh do fail")
 		return
 	}
 }
@@ -44,9 +44,9 @@ func CancelEvent(v any) {
 	req, _ := http.NewRequest("POST", url, nil)
 	_, err := client.Do(req)
 	if err != nil {
-		log.Println("[CancelEvent] listen cancel do fail")
+		logrus.Info("[CancelEvent] listen cancel do fail")
 	}
-	log.Println("[CancelEvent] listen cancel signal, url=", url)
+	logrus.Info("[CancelEvent] listen cancel signal, url=", url)
 }
 
 // ConfigEvent config.json

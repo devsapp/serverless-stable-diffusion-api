@@ -1,17 +1,91 @@
 package module
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
+	"github.com/devsapp/serverless-stable-diffusion-api/pkg/log"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
+	"github.com/sirupsen/logrus"
+	"io"
 	"io/ioutil"
 	"os"
+	"syscall"
+	"time"
 )
 
-const SD_CONFIG = "config.json"
+const (
+	SD_CONFIG         = "config.json"
+	SD_START_TIMEOUT  = 2 * 60 * 1000 // 2min
+	SD_DETECT_TIMEOUT = 5 * 1000      // 5s
+)
+
+type SDManager struct {
+	pid     int
+	port    string
+	flag    bool
+	stdout  io.ReadCloser
+	endChan chan struct{}
+}
+
+func NewSDManager(port string) *SDManager {
+	sd := new(SDManager)
+	sd.port = port
+	if err := sd.init(); err != nil {
+		logrus.Error(err.Error())
+	}
+	return sd
+}
+
+func (s *SDManager) init() error {
+	// start sd
+	s.endChan = make(chan struct{}, 1)
+	execItem, err := utils.DoExecAsync(config.ConfigGlobal.SdShell, config.ConfigGlobal.SdPath)
+	if err != nil {
+		return err
+	}
+	// init read sd log
+	go func() {
+		stdout := bufio.NewScanner(execItem.Stdout)
+		for stdout.Scan() {
+			select {
+			case <-s.endChan:
+				break
+			default:
+				log.SDLogInstance.LogFlow <- stdout.Text()
+			}
+		}
+	}()
+	s.pid = execItem.Pid
+	s.stdout = execItem.Stdout
+	// make sure sd started
+	if !utils.PortCheck(s.port, SD_START_TIMEOUT) {
+		return errors.New("sd not start after 2min")
+	}
+	s.flag = true
+	// start detect
+	go s.detectAlive()
+	return nil
+}
+
+func (s *SDManager) detectAlive() {
+	for s.flag {
+		time.Sleep(time.Duration(SD_DETECT_TIMEOUT) * time.Millisecond)
+		if !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) {
+			s.Close()
+			logrus.Fatal("sd service not alive")
+		}
+	}
+}
+
+func (s *SDManager) Close() {
+	s.flag = false
+	syscall.Kill(-s.pid, syscall.SIGKILL)
+	s.endChan <- struct{}{}
+}
 
 // UpdateSdConfig modify sd config.json sd_model_checkpoint and sd_vae
 func UpdateSdConfig(configStore datastore.Datastore) error {

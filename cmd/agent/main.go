@@ -5,7 +5,7 @@ import (
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/server"
-	"log"
+	"github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 	"syscall"
@@ -24,24 +24,44 @@ func handleSignal() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutting down server...")
+	logrus.Info("Shutting down server...")
+}
+
+func logInit(logLevel string) {
+	switch logLevel {
+	case "debug":
+		logrus.SetLevel(logrus.DebugLevel)
+		// include function and file
+		logrus.SetReportCaller(true)
+	case "dev":
+		logrus.SetLevel(logrus.InfoLevel)
+	default:
+		logrus.SetLevel(logrus.WarnLevel)
+	}
 }
 
 func main() {
 	port := flag.String("port", defaultPort, "server listen port, default 8010")
 	dbType := flag.String("dbType", string(defaultDBType), "db type default sqlite")
 	configFile := flag.String("config", defaultConfigPath, "default config path")
+	mode := flag.String("mode", "dev", "service work mode debug|dev|product")
+	sdShell := flag.String("sd", "", "sd start shell")
 	flag.Parse()
+	// init log
+	logInit(*mode)
+	logrus.Info("agent start")
 
 	// init config
 	if err := config.InitConfig(*configFile); err != nil {
-		log.Fatal(err.Error())
+		logrus.Fatal(err.Error())
 	}
+	logrus.Info(*sdShell)
+	config.ConfigGlobal.SdShell = *sdShell
 
 	// init server and start
-	agent, err := server.NewAgentServer(*port, datastore.DatastoreType(*dbType))
+	agent, err := server.NewAgentServer(*port, datastore.DatastoreType(*dbType), *mode)
 	if err != nil {
-		log.Fatal("agent server init fail")
+		logrus.Fatal("agent server init fail")
 	}
 	go agent.Start()
 
@@ -49,8 +69,8 @@ func main() {
 	handleSignal()
 
 	if err := agent.Close(shutdownTimeout); err != nil {
-		log.Fatal("Shutdown server fail")
+		logrus.Fatal("Shutdown server fail")
 	}
 
-	log.Println("Server exiting")
+	logrus.Info("Server exited")
 }

@@ -8,12 +8,13 @@ import (
 	"fmt"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
+	"github.com/devsapp/serverless-stable-diffusion-api/pkg/log"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/models"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/module"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -41,6 +42,58 @@ func NewAgentHandler(taskStore datastore.Datastore,
 	}
 }
 
+// ExtraImages image upcaling
+// (POST /extra_images)
+func (a *AgentHandler) ExtraImages(c *gin.Context) {
+	username := c.GetHeader(userKey)
+	taskId := c.GetHeader(taskKey)
+	c.Writer.Header().Set("taskId", taskId)
+	log.SDLogInstance.SetTaskId(taskId)
+	defer log.SDLogInstance.SetTaskId("")
+	request := new(models.ExtraImagesJSONRequestBody)
+	if err := getBindResult(c, request); err != nil {
+		// update task status
+		a.taskStore.Update(taskId, map[string]interface{}{
+			datastore.KTaskStatus:     config.TASK_FAILED,
+			datastore.KTaskCode:       int64(requestFail),
+			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+		})
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf(err.Error())
+		handleError(c, http.StatusBadRequest, config.BADREQUEST)
+		return
+	}
+	// preprocess request ossPath image to base64
+	if err := preprocessRequest(request); err != nil {
+		// update task status
+		a.taskStore.Update(taskId, map[string]interface{}{
+			datastore.KTaskStatus:     config.TASK_FAILED,
+			datastore.KTaskCode:       int64(requestFail),
+			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+		})
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf(err.Error())
+		handleError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	// update task status
+	a.taskStore.Update(taskId, map[string]interface{}{
+		datastore.KTaskStatus: config.TASK_INPROGRESS,
+	})
+	body, err := json.Marshal(request)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("request to json err=%s", err.Error())
+		handleError(c, http.StatusBadRequest, config.BADREQUEST)
+		return
+	}
+	if err := a.extraImages(username, taskId, config.EXTRAIMAGES, body); err != nil {
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Error(err.Error())
+		handleError(c, http.StatusInternalServerError, err.Error())
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "predict task success",
+		})
+	}
+}
+
 // Img2Img img to img predict
 // (POST /img2img)
 func (a *AgentHandler) Img2Img(c *gin.Context) {
@@ -48,6 +101,9 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 	defer cancel()
 	username := c.GetHeader(userKey)
 	taskId := c.GetHeader(taskKey)
+	c.Writer.Header().Set("taskId", taskId)
+	log.SDLogInstance.SetTaskId(taskId)
+	defer log.SDLogInstance.SetTaskId("")
 	configVer := c.GetHeader(versionKey)
 	if username == "" || taskId == "" || configVer == "" {
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
@@ -97,19 +153,19 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 	// async progress
 	go func() {
 		if err := a.taskProgress(ctx, username, taskId); err != nil {
-			log.Printf("update task progress error %s", err.Error())
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorln(
+				"update task progress error %s", err.Error())
 		}
 	}()
 
 	body, err := json.Marshal(request)
 	if err != nil {
-		log.Println("request to json err=", err.Error())
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorln("request to json err=", err.Error())
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
 		return
 	}
 	// predict task
 	a.predictTask(username, taskId, config.IMG2IMG, body)
-	//log.Printf("task=%s predict success, request body=%s", taskId, string(body))
 	c.JSON(http.StatusOK, gin.H{
 		"message": "predict task success",
 	})
@@ -122,6 +178,9 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 	defer cancel()
 	username := c.GetHeader(userKey)
 	taskId := c.GetHeader(taskKey)
+	c.Writer.Header().Set("taskId", taskId)
+	log.SDLogInstance.SetTaskId(taskId)
+	defer log.SDLogInstance.SetTaskId("")
 	configVer := c.GetHeader(versionKey)
 	if username == "" || taskId == "" || configVer == "" {
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
@@ -174,22 +233,22 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 	// async progress
 	go func() {
 		if err := a.taskProgress(ctx, username, taskId); err != nil {
-			log.Printf("update task progress error %s", err.Error())
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf(
+				"update task progress error %s", err.Error())
 		}
 	}()
 
 	body, err := json.Marshal(request)
 	if err != nil {
-		log.Println("request to json err=", err.Error())
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorln("request to json err=", err.Error())
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
 		return
 	}
 	// predict task
 	err = a.predictTask(username, taskId, config.TXT2IMG, body)
 	if err != nil {
-		log.Println(err.Error())
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorln(err.Error())
 	}
-	//log.Printf("task=%s predict success, request body=%s", taskId, string(body))
 	c.JSON(http.StatusOK, gin.H{
 		"message": "predict task success",
 	})
@@ -213,8 +272,9 @@ func (a *AgentHandler) predictTask(user, taskId, path string, body []byte) error
 		return err
 	}
 	var result *models.Txt2ImgResult
+
 	if err := json.Unmarshal(body, &result); err != nil {
-		log.Println(err.Error())
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorln(err.Error())
 		return err
 	}
 	if result == nil {
@@ -224,7 +284,7 @@ func (a *AgentHandler) predictTask(user, taskId, path string, body []byte) error
 			datastore.KTaskInfo:       string(body),
 			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
 		}); err != nil {
-			log.Println(err.Error())
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Println(err.Error())
 			return err
 		}
 		return errors.New("predict fail")
@@ -234,7 +294,7 @@ func (a *AgentHandler) predictTask(user, taskId, path string, body []byte) error
 	}
 	params, err := json.Marshal(result.Parameters)
 	if err != nil {
-		log.Println("json:", err.Error())
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Println("json:", err.Error())
 	}
 	var images []string
 	if resp.StatusCode == requestOk {
@@ -257,7 +317,7 @@ func (a *AgentHandler) predictTask(user, taskId, path string, body []byte) error
 		datastore.KTaskInfo:       result.Info,
 		datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
 	}); err != nil {
-		log.Println(err.Error())
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorln(err.Error())
 		return err
 	}
 	return nil
@@ -293,11 +353,9 @@ func (a *AgentHandler) taskProgress(ctx context.Context, user, taskId string) er
 
 		// Get progress judge task done
 		if isStart && result.Progress <= 0 {
-			log.Printf("taskid=%s is done", taskId)
 			return nil
 		}
 		if result.Progress > 0 {
-			log.Println("progress:", result.Progress)
 			// output to oss
 			if result.CurrentImage != "" && config.ConfigGlobal.EnableProgressImg() {
 				ossPath := fmt.Sprintf("images/%s/%s_progress.png", user, taskId)
@@ -318,7 +376,7 @@ func (a *AgentHandler) taskProgress(ctx context.Context, user, taskId string) er
 					datastore.KTaskProgressColumnName: string(resultByte),
 					datastore.KTaskModifyTime:         fmt.Sprintf("%d", utils.TimestampS()),
 				}); err != nil {
-					log.Println("err:", err.Error())
+					logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorln("err:", err.Error())
 				}
 			}
 			isStart = true
@@ -327,12 +385,72 @@ func (a *AgentHandler) taskProgress(ctx context.Context, user, taskId string) er
 		// notifyDone means the update-progress is notified by other goroutine to finish,
 		// either because the task has been aborted or succeed.
 		if notifyDone {
-			log.Printf("the task %s is done, either success or failed", taskId)
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Infof(
+				"the task %s is done, either success or failed", taskId)
 			return nil
 		}
 
 		time.Sleep(config.PROGRESS_INTERVAL * time.Millisecond)
 	}
+}
+
+func (a *AgentHandler) extraImages(user, taskId, path string, body []byte) error {
+	url := fmt.Sprintf("%s%s", config.ConfigGlobal.SdUrlPrefix, path)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	body, err = io.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	if err != nil {
+		return err
+	}
+	var result *models.ExtraImageResult
+
+	if err := json.Unmarshal(body, &result); err != nil {
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorln(err.Error())
+		return err
+	}
+	if result == nil {
+		if err := a.taskStore.Update(taskId, map[string]interface{}{
+			datastore.KTaskCode:       int64(resp.StatusCode),
+			datastore.KTaskStatus:     config.TASK_FAILED,
+			datastore.KTaskInfo:       string(body),
+			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+		}); err != nil {
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Info(err.Error())
+			return err
+		}
+		return errors.New("predict fail")
+	}
+	var images []string
+	if resp.StatusCode == requestOk {
+		// upload image to oss
+		ossPath := fmt.Sprintf("images/%s/%s_%d.png", user, taskId, 1)
+		if err := uploadImages(&ossPath, &result.Image); err != nil {
+			return fmt.Errorf("output image err=%s", err.Error())
+		}
+
+		images = append(images, ossPath)
+	}
+	if err := a.taskStore.Update(taskId, map[string]interface{}{
+		datastore.KTaskCode:       int64(resp.StatusCode),
+		datastore.KTaskStatus:     config.TASK_FINISH,
+		datastore.KTaskImage:      strings.Join(images, ","),
+		datastore.KTaskParams:     "{}",
+		datastore.KTaskInfo:       fmt.Sprintf("{\"html_info\":\"%s\"}", result.HTMLInfo),
+		datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+	}); err != nil {
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Error(err.Error())
+		return err
+	}
+	return nil
 }
 
 func (a *AgentHandler) updateOverrideSettingsRequest(overrideSettings *map[string]interface{},
@@ -376,6 +494,18 @@ func (a *AgentHandler) updateOverrideSettingsRequest(overrideSettings *map[strin
 // deal ossImg to base64
 func preprocessRequest(req any) error {
 	switch req.(type) {
+	case *models.ExtraImagesJSONRequestBody:
+		request := req.(*models.ExtraImagesJSONRequestBody)
+		if request.Image != "" {
+			if isImgPath(request.Image) {
+
+				base64, err := module.OssGlobal.DownloadFileToBase64(request.Image)
+				if err != nil {
+					return err
+				}
+				request.Image = *base64
+			}
+		}
 	case *models.Txt2ImgJSONRequestBody:
 		request := req.(*models.Txt2ImgJSONRequestBody)
 		if request.AlwaysonScripts != nil {

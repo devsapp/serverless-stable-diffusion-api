@@ -12,7 +12,7 @@ import (
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/module"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
 	"github.com/gin-gonic/gin"
-	"log"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"strings"
 )
@@ -326,6 +326,97 @@ func (p *ProxyHandler) GetTaskProgress(c *gin.Context, taskId string) {
 
 }
 
+// ExtraImages image upcaling
+// (POST /extra_images)
+func (p *ProxyHandler) ExtraImages(c *gin.Context) {
+	username := c.GetHeader(userKey)
+	invokeType := c.GetHeader(requestType)
+	if username == "" {
+		if config.ConfigGlobal.EnableLogin() {
+			handleError(c, http.StatusBadRequest, config.BADREQUEST)
+			return
+		} else {
+			username = DEFAULT_USER
+		}
+	}
+	request := new(models.ExtraImagesJSONRequestBody)
+	if err := getBindResult(c, request); err != nil {
+		handleError(c, http.StatusBadRequest, config.BADREQUEST)
+		return
+	}
+	// taskId
+	taskId := c.GetHeader(taskKey)
+	if taskId == "" {
+		// init taskId
+		taskId = utils.RandStr(taskIdLength)
+	}
+	c.Writer.Header().Set("taskId", taskId)
+
+	endPoint := config.ConfigGlobal.Downstream
+	var err error
+	if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
+		if endPoint = module.FuncManagerGlobal.GetLastInvokeEndpoint(); endPoint == "" {
+			handleError(c, http.StatusInternalServerError, "not found valid endpoint")
+			return
+		}
+	}
+
+	// write db
+	if err := p.taskStore.Put(taskId, map[string]interface{}{
+		datastore.KTaskIdColumnName: taskId,
+		datastore.KTaskUser:         username,
+		datastore.KTaskStatus:       config.TASK_QUEUE,
+		datastore.KTaskCreateTime:   fmt.Sprintf("%d", utils.TimestampS()),
+	}); err != nil {
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("put db err=%s", err.Error())
+		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
+			TaskId:  taskId,
+			Status:  config.TASK_FAILED,
+			Message: utils.String(config.INTERNALERROR),
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), config.HTTPTIMEOUT)
+	defer cancel()
+	// get client by endPoint
+	client := client.ManagerClientGlobal.GetClient(endPoint)
+	// async request
+	resp, err := client.ExtraImages(ctx, *request, func(ctx context.Context, req *http.Request) error {
+		req.Header.Add(userKey, username)
+		req.Header.Add(taskKey, taskId)
+		if isAsync(invokeType) {
+			req.Header.Add(FcAsyncKey, "Async")
+		}
+		return nil
+	})
+	if err != nil || (resp.StatusCode != syncSuccessCode && resp.StatusCode != asyncSuccessCode) {
+		if err != nil {
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Error(err.Error())
+		} else {
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Error("%v", resp)
+		}
+		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
+			TaskId:  taskId,
+			Status:  config.TASK_FAILED,
+			Message: utils.String(config.INTERNALERROR),
+		})
+	} else {
+		c.JSON(http.StatusOK, models.SubmitTaskResponse{
+			TaskId: taskId,
+			Status: func() string {
+				if resp.StatusCode == syncSuccessCode {
+					return config.TASK_FINISH
+				}
+				if resp.StatusCode == asyncSuccessCode {
+					return config.TASK_QUEUE
+				}
+				return config.TASK_FAILED
+			}(),
+		})
+	}
+}
+
 // Txt2Img txt to img predict
 // (POST /txt2img)
 func (p *ProxyHandler) Txt2Img(c *gin.Context) {
@@ -350,7 +441,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 		// init taskId
 		taskId = utils.RandStr(taskIdLength)
 	}
-	log.Println("taskid:", taskId)
+	c.Writer.Header().Set("taskId", taskId)
 
 	endPoint := config.ConfigGlobal.Downstream
 	var err error
@@ -382,7 +473,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 			datastore.KTaskCancel:       int64(config.CANCEL_INIT),
 			datastore.KTaskCreateTime:   fmt.Sprintf("%d", utils.TimestampS()),
 		}); err != nil {
-			log.Println("[Error] put db err=", err.Error())
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("put db err=%s", err.Error())
 			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 				TaskId:  taskId,
 				Status:  config.TASK_FAILED,
@@ -399,6 +490,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 				Status:  config.TASK_FAILED,
 				Message: utils.String(config.INTERNALERROR),
 			})
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("get config version err=%s", err.Error())
 			return
 		}
 		version = func() string {
@@ -425,9 +517,9 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 	})
 	if err != nil || (resp.StatusCode != syncSuccessCode && resp.StatusCode != asyncSuccessCode) {
 		if err != nil {
-			log.Println(err.Error())
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Error(err.Error())
 		} else {
-			log.Printf("%v", resp)
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Error("%v", resp)
 		}
 		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 			TaskId:  taskId,
@@ -474,7 +566,7 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 		// init taskId
 		taskId = utils.RandStr(taskIdLength)
 	}
-	log.Println("taskid:", taskId)
+	c.Writer.Header().Set("taskId", taskId)
 
 	endPoint := config.ConfigGlobal.Downstream
 	var err error
@@ -506,7 +598,7 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 			datastore.KTaskCancel:       int64(config.CANCEL_INIT),
 			datastore.KTaskCreateTime:   fmt.Sprintf("%d", utils.TimestampS()),
 		}); err != nil {
-			log.Println("[Error] put db err=", err.Error())
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Error("[Error] put db err=", err.Error())
 			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 				TaskId:  taskId,
 				Status:  config.TASK_FAILED,
@@ -523,6 +615,7 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 				Status:  config.TASK_FAILED,
 				Message: utils.String(config.INTERNALERROR),
 			})
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Error("get config version err=", err.Error())
 			return
 		}
 		version = func() string {
@@ -658,15 +751,16 @@ func (p *ProxyHandler) getTaskResult(taskId string) (*models.TaskResultResponse,
 	paramsStr := data[datastore.KTaskParams].(string)
 	var m map[string]interface{}
 	if err := json.Unmarshal([]byte(paramsStr), &m); err != nil {
-		log.Println("[getTaskResult] Unmarshal params error=", err.Error())
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Println("Unmarshal params error=", err.Error())
 	}
 	*result.Parameters = m
 	// info
+	var mm map[string]interface{}
 	infoStr := data[datastore.KTaskInfo].(string)
-	if err := json.Unmarshal([]byte(infoStr), &m); err != nil {
-		log.Println("[getTaskResult] Unmarshal Info error=", err.Error())
+	if err := json.Unmarshal([]byte(infoStr), &mm); err != nil {
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Println("Unmarshal Info error=", err.Error())
 	}
-	*result.Info = m
+	*result.Info = mm
 	return result, nil
 }
 

@@ -104,9 +104,8 @@ export PYTHONPATH="${PYTHONPATH:-}:${NAS_DIR}/python"
 
 echo "args: $ARGS"
 
-echo "------start agent background---------"
-nohup /agent/agent -port=7860 -dbType=tableStore -config=/agent/agent.yaml &>/agent/log&
+/agent/agent -port=7860 -dbType=tableStore -config=/agent/agent.yaml -sd="python -u webui.py --listen --port 7861 ${ARGS}"
 
-echo "------start webui---------"
-
-python -u webui.py --listen --port 7861 ${ARGS}
+#echo "------start webui---------"
+#
+#python -u webui.py --listen --port 7861 ${ARGS}

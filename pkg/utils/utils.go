@@ -3,18 +3,15 @@ package utils
 import (
 	"crypto/md5"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"gocv.io/x/gocv"
+	"github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -121,30 +118,6 @@ func FileExists(path string) bool {
 	return true
 }
 
-func ImageToBase64(path string, ext gocv.FileExt) (*string, error) {
-	imageMat := gocv.IMRead(path, gocv.IMReadColor)
-	imageBytes, err := gocv.IMEncode(ext, imageMat)
-	if err != nil {
-		return String(""), err
-	}
-	imageBase64 := base64.StdEncoding.EncodeToString(imageBytes.GetBytes())
-	return &imageBase64, nil
-}
-
-func ImageType(imageFn string) (gocv.FileExt, error) {
-	fileExt := gocv.PNGFileExt
-	imgTypeSlice := strings.Split(imageFn, ".")
-	switch imgTypeSlice[len(imgTypeSlice)-1] {
-	case "png":
-		fileExt = gocv.PNGFileExt
-	case "jpg", "jpeg":
-		fileExt = gocv.JPEGFileExt
-	default:
-		return "", errors.New("img type not support")
-	}
-	return fileExt, nil
-}
-
 func ListFile(path string) []string {
 	fileSlice := make([]string, 0)
 	files, _ := ioutil.ReadDir(path)
@@ -189,8 +162,8 @@ func IsSame(key string, a, b interface{}) bool {
 	case int64, int32, int, int16, int8, string, float64, float32, bool:
 		return a == b
 	default:
-		log.Println(key, a, b)
-		log.Fatal("type not support")
+		logrus.Info(key, a, b)
+		logrus.Fatal("type not support")
 	}
 	return true
 }

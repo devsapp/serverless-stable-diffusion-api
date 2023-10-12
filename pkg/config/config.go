@@ -48,6 +48,7 @@ type ConfigYaml struct {
 	// sd
 	SdUrlPrefix string `yaml:"sdUrlPrefix"`
 	SdPath      string `yaml:"sdPath"`
+	SdShell     string `yaml:"sdShell"`
 
 	// model
 	UseLocalModels string `yaml:"useLocalModel"`

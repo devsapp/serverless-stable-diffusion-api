@@ -7,7 +7,7 @@ import (
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/handler"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/module"
 	"github.com/gin-gonic/gin"
-	"log"
+	"github.com/sirupsen/logrus"
 	"net"
 	"net/http"
 	"time"
@@ -22,7 +22,7 @@ type ProxyServer struct {
 	configStore    datastore.Datastore
 }
 
-func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, error) {
+func NewProxyServer(port string, dbType datastore.DatastoreType, mode string) (*ProxyServer, error) {
 	// init oss manager
 	if err := module.NewOssManager(); err != nil {
 		return nil, err
@@ -57,8 +57,14 @@ func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, 
 	proxyHandler := handler.NewProxyHandler(taskDataStore, modelDataStore, userDataStore, configDataStore)
 
 	// init router
+	if mode == gin.DebugMode {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
+	router.Use(handler.Stat())
 
 	// auth permission check
 	if config.ConfigGlobal.EnableLogin() {
@@ -82,7 +88,7 @@ func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, 
 // Start proxy server
 func (p *ProxyServer) Start() error {
 	if err := p.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("listen: %s\n", err)
+		logrus.Fatalf("listen: %s\n", err)
 		return err
 	}
 	return nil
@@ -108,7 +114,7 @@ func (p *ProxyServer) Close(shutdownTimeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := p.srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown: ", err)
+		logrus.Fatal("Server forced to shutdown: ", err)
 		return err
 	}
 	return nil

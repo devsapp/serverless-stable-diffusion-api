@@ -55,6 +55,7 @@ const (
 	TXT2IMG            = "/sdapi/v1/txt2img"
 	IMG2IMG            = "/sdapi/v1/img2img"
 	PROGRESS           = "/sdapi/v1/progress"
+	EXTRAIMAGES        = "/sdapi/v1/extra-single-image"
 )
 
 // ots

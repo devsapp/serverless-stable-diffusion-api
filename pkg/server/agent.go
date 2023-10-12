@@ -2,20 +2,17 @@ package server
 
 import (
 	"context"
-	"errors"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/handler"
+	"github.com/devsapp/serverless-stable-diffusion-api/pkg/log"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/module"
-	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
 	"github.com/gin-gonic/gin"
-	"log"
+	"github.com/sirupsen/logrus"
 	"net"
 	"net/http"
 	"time"
 )
-
-const SD_START_TIMEOUT = 10 * 60 * 1000 // 10min
 
 type AgentServer struct {
 	srv             *http.Server
@@ -23,21 +20,29 @@ type AgentServer struct {
 	taskDataStore   datastore.Datastore
 	modelDataStore  datastore.Datastore
 	configDataStore datastore.Datastore
+	sdManager       *module.SDManager
 }
 
-func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, error) {
+func NewAgentServer(port string, dbType datastore.DatastoreType, mode string) (*AgentServer, error) {
 	agentServer := new(AgentServer)
 	// init router
+	if mode == gin.DebugMode {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
+	router.Use(handler.Stat())
 	if config.ConfigGlobal.ExposeToUser() {
+		agentServer.sdManager = module.NewSDManager(config.ConfigGlobal.GetSDPort())
 		// enable ReverserProxy
 		router.Any("/*path", handler.ReverseProxy)
 	} else {
 		// only api
 		// init oss manager
 		if err := module.NewOssManager(); err != nil {
-			log.Fatal("oss init fail")
+			logrus.Fatal("oss init fail")
 		}
 		tableFactory := datastore.DatastoreFactory{}
 		// init task table
@@ -57,9 +62,10 @@ func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, 
 		// update sd config.json
 		if !config.ConfigGlobal.ExposeToUser() {
 			if err := module.UpdateSdConfig(configDataStore); err != nil {
-				log.Fatal("sd config update fail")
+				logrus.Fatal("sd config update fail")
 			}
 		}
+		agentServer.sdManager = module.NewSDManager(config.ConfigGlobal.GetSDPort())
 
 		handler.RegisterHandlers(router, agentHandler)
 		agentServer.listenTask = listenTask
@@ -68,11 +74,6 @@ func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, 
 		agentServer.configDataStore = configDataStore
 	}
 
-	// make sure sd started
-	if !utils.PortCheck(config.ConfigGlobal.GetSDPort(), SD_START_TIMEOUT) {
-		log.Fatal("sd not start after 10min")
-		return nil, errors.New("sd not start after 10min")
-	}
 	agentServer.srv = &http.Server{
 		Addr:    net.JoinHostPort("0.0.0.0", port),
 		Handler: router,
@@ -84,7 +85,7 @@ func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, 
 // Start proxy server
 func (p *AgentServer) Start() error {
 	if err := p.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("listen: %s\n", err)
+		logrus.Fatalf("listen: %s\n", err)
 		return err
 	}
 	return nil
@@ -105,11 +106,17 @@ func (p *AgentServer) Close(shutdownTimeout time.Duration) error {
 	if p.configDataStore != nil {
 		p.configDataStore.Close()
 	}
+	if p.sdManager != nil {
+		p.sdManager.Close()
+	}
+	if log.SDLogInstance != nil {
+		log.SDLogInstance.Close()
+	}
 	// shutdown server
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := p.srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown: ", err)
+		logrus.Fatal("Server forced to shutdown: ", err)
 		return err
 	}
 	return nil

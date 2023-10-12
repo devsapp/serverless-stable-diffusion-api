@@ -10,7 +10,7 @@ import (
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
-	"log"
+	"github.com/sirupsen/logrus"
 	"sync"
 	"time"
 )
@@ -33,9 +33,10 @@ var FuncManagerGlobal *FuncManager
 type FuncManager struct {
 	endpoints map[string][]string
 	//modelToInfo map[string][]*SdModels
-	funcStore datastore.Datastore
-	fcClient  *fc.Client
-	lock      sync.RWMutex
+	funcStore          datastore.Datastore
+	fcClient           *fc.Client
+	lock               sync.RWMutex
+	lastInvokeEndpoint string
 }
 
 func InitFuncManager(funcStore datastore.Datastore) error {
@@ -59,7 +60,14 @@ func InitFuncManager(funcStore datastore.Datastore) error {
 	return nil
 }
 
-// GetEndpoint get endpoint, key={sdModel_sdVae}
+// GetLastInvokeEndpoint get last invoke endpoint
+func (f *FuncManager) GetLastInvokeEndpoint() string {
+	f.lock.RLock()
+	defer f.lock.RUnlock()
+	return f.lastInvokeEndpoint
+}
+
+// GetEndpoint get endpoint, key=sdModel
 // retry and read from db if create function fail
 // first get from cache
 // second get from db
@@ -74,17 +82,20 @@ func (f *FuncManager) GetEndpoint(sdModel string) (string, error) {
 	for reTry > 0 {
 		// first get cache
 		if endpoint := f.getEndpointFromCache(key); endpoint != "" {
+			f.lastInvokeEndpoint = endpoint
 			return endpoint, nil
 		}
 
 		f.lock.Lock()
 		// second get from db
 		if endpoint := f.getEndpointFromDb(key); endpoint != "" {
+			f.lastInvokeEndpoint = endpoint
 			f.lock.Unlock()
 			return endpoint, nil
 		}
 		// third create function
 		if endpoint := f.createFunc(key, sdModel, getEnv(sdModel)); endpoint != "" {
+			f.lastInvokeEndpoint = endpoint
 			f.lock.Unlock()
 			return endpoint, nil
 		}
@@ -122,7 +133,7 @@ func (f *FuncManager) UpdateFunctionEnv(key, modelName string) error {
 	if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
 		new(fc.UpdateFunctionRequest).SetGpuMemorySize(config.ConfigGlobal.GpuMemorySize).
 			SetEnvironmentVariables(env)); err != nil {
-		log.Println(err.Error())
+		logrus.Info(err.Error())
 		return err
 	}
 	return nil
@@ -173,7 +184,7 @@ func (f *FuncManager) createFunc(key, sdModel string, env map[string]*string) st
 		f.putFunc(key, functionName, sdModel, endpoint)
 		return endpoint
 	} else {
-		log.Println(err.Error())
+		logrus.Info(err.Error())
 	}
 	return ""
 }
@@ -196,6 +207,10 @@ func (f *FuncManager) loadFunc() {
 			})
 		}
 		endpoint := data[datastore.KModelServiceEndPoint].(string)
+		// init lastInvokeEndpoint
+		if f.lastInvokeEndpoint == "" {
+			f.lastInvokeEndpoint = endpoint
+		}
 		sdModel := data[datastore.KModelServiceSdModel].(string)
 		f.endpoints[key] = []string{endpoint, sdModel}
 	}
@@ -225,7 +240,7 @@ func (f *FuncManager) putFunc(key, functionName, sdModel, endpoint string) {
 	})
 }
 
-// create fc fucntion
+// create fc function
 func (f *FuncManager) createFCFunction(serviceName, functionName string,
 	env map[string]*string) (endpoint string, err error) {
 	createRequest := getCreateFuncRequest(functionName, env)

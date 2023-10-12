@@ -6,6 +6,11 @@ type Txt2ImgResult struct {
 	Info       string                 `json:"info"`
 }
 
+type ExtraImageResult struct {
+	HTMLInfo string `json:"html_info"`
+	Image    string `json:"image"`
+}
+
 type ProgressResult struct {
 	CurrentImage string  `json:"current_image"`
 	EtaRelative  float64 `json:"eta_relative"`

@@ -9,7 +9,9 @@ ossPath: /mnt/oss
 dbSqlite: /mnt/auto/sd/sqlite3
 listenInterval: 1
 sdUrlPrefix: http://localhost:7861
+sdShell: python -u webui.py --listen --xformers --enable-insecure-extension-access --skip-version-check --no-download-sd-model --port 7861
 progressImageOutputSwitch: off
 sdPath: /stable-diffusion-webui
 useLocalModel: yes
 exposeToUser: No
+serverName: agent

@@ -282,6 +282,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /extra_images:
+    post:
+      summary: image upcaling
+      operationId: extraImages
+      requestBody:
+        description: image upcaling
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExtraImagesRequest'
+      responses:
+        '200':
+          description: image upcaling respone
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitTaskResponse'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /restart:
     post:
       summary: restart webui api server
@@ -821,6 +845,61 @@ components:
         message:
           type: string
           example: "success"
+    ExtraImagesRequest:
+      required:
+        - resize_mode
+        - image
+      properties:
+        resize_mode:
+          type: integer
+          format: int32
+          example: "0|1"
+        show_extras_results:
+          type: boolean
+          example: "false|true"
+        gfpgan_visibility:
+          type: number
+          format: float
+          example: "0.01"
+        codeformer_visibility:
+          type: number
+          format: float
+          example: "0.01"
+        codeformer_weight:
+          type: number
+          format: float
+          example: "0.01"
+        upscaling_resize:
+          type: number
+          format: float
+          example: "2.0"
+        upscaling_resize_w:
+          type: integer
+          format: int32
+          example: "1024"
+        upscaling_resize_h:
+          type: integer
+          format: int32
+          example: "1024"
+        upscaling_crop:
+          type: boolean
+          example: "true|false"
+        upscaler_1:
+          type: string
+          example: "ScuNET PSNR"
+        upscaler_2:
+          type: string
+          example: "ScuNET PSNR"
+        extras_upscaler_2_visibility:
+          type: number
+          format: float
+          example: "0.02"
+        upscale_first:
+          type: boolean
+          example: "true|false"
+        image:
+          type: string
+          example: "base64|imgpath"
     Error:
       required:
         - code

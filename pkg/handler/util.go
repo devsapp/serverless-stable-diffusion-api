@@ -10,9 +10,11 @@ import (
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 )
 
 const (
@@ -112,4 +114,33 @@ func listModelFile(path, modelType string) (modelAttrs []*models.ModelAttributes
 		}
 	}
 	return
+}
+
+// Stat cost code
+func Stat() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		startTime := time.Now()
+		c.Next()
+		endTime := time.Now()
+		latencyTime := endTime.Sub(startTime)
+		reqMethod := c.Request.Method
+		reqUri := c.Request.RequestURI
+		statusCode := c.Writer.Status()
+		clientIP := c.ClientIP()
+		logrus.Infof("%s | %3d | %13v | %15s | %s | %s | %s",
+			config.ConfigGlobal.ServerName,
+			statusCode,
+			latencyTime,
+			clientIP,
+			reqMethod,
+			reqUri,
+			func() string {
+				if taskId := c.Writer.Header().Get("taskId"); taskId != "" {
+					return fmt.Sprintf("taskId=%s", taskId)
+				} else {
+					return ""
+				}
+			}(),
+		)
+	}
 }
