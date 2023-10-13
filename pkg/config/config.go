@@ -5,6 +5,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -156,6 +157,12 @@ func (c *Config) updateFromEnv() {
 	sdImage := os.Getenv(SD_IMAGE)
 	if sdImage != "" {
 		c.Image = sdImage
+	}
+	gpuMemorySize := os.Getenv(GPU_MEMORY_SIZE)
+	if gpuMemorySize != "" {
+		if size, err := strconv.Atoi(gpuMemorySize); err == nil {
+			c.GpuMemorySize = int32(size)
+		}
 	}
 
 	// flex mode

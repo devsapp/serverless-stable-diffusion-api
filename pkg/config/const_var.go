@@ -84,6 +84,7 @@ const (
 	EXPOSE_TO_USER    = "EXPOSE_TO_USER"
 	SERVER_NAME       = "SERVER_NAME"
 	DOWNSTREAM        = "DOWNSTREAM"
+	GPU_MEMORY_SIZE   = "GPU_MEMORY_SIZE"
 )
 
 // function http trigger
