@@ -24,3 +24,8 @@ func TestTimestampMS(t *testing.T) {
 	cur := TimestampMS()
 	assert.Equal(t, len(fmt.Sprintf("%d", cur)), 13)
 }
+
+func TestCheckProcessExist(t *testing.T) {
+	exist := CheckProcessExist(13824)
+	assert.Equal(t, true, exist)
+}

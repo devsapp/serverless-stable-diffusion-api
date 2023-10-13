@@ -20,8 +20,8 @@ import (
 const (
 	SD_CONFIG         = "config.json"
 	SD_START_TIMEOUT  = 2 * 60 * 1000 // 2min
-	SD_DETECT_TIMEOUT = 10 * 1000     // 10s
-	SD_DETECT_RETEY   = 6             // detect 6 fail
+	SD_DETECT_TIMEOUT = 1000          // 1s
+	SD_DETECT_RETEY   = 4             // detect 4 fail
 )
 
 type SDManager struct {
@@ -35,6 +35,7 @@ type SDManager struct {
 func NewSDManager(port string) *SDManager {
 	sd := new(SDManager)
 	sd.port = port
+	sd.endChan = make(chan struct{}, 1)
 	if err := sd.init(); err != nil {
 		logrus.Error(err.Error())
 	}
@@ -43,7 +44,6 @@ func NewSDManager(port string) *SDManager {
 
 func (s *SDManager) init() error {
 	// start sd
-	s.endChan = make(chan struct{}, 1)
 	execItem, err := utils.DoExecAsync(config.ConfigGlobal.SdShell, config.ConfigGlobal.SdPath)
 	if err != nil {
 		return err
@@ -51,6 +51,7 @@ func (s *SDManager) init() error {
 	// init read sd log
 	go func() {
 		stdout := bufio.NewScanner(execItem.Stdout)
+		defer execItem.Stdout.Close()
 		for stdout.Scan() {
 			select {
 			case <-s.endChan:
@@ -59,6 +60,7 @@ func (s *SDManager) init() error {
 				log.SDLogInstance.LogFlow <- stdout.Text()
 			}
 		}
+
 	}()
 	s.pid = execItem.Pid
 	s.stdout = execItem.Stdout
@@ -76,14 +78,16 @@ func (s *SDManager) detectAlive() {
 	retry := SD_DETECT_RETEY
 	for s.flag {
 		time.Sleep(time.Duration(SD_DETECT_TIMEOUT) * time.Millisecond)
-		if !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) {
+		if !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) && !utils.CheckProcessExist(-s.pid) {
 			retry--
 		} else {
 			retry = SD_DETECT_RETEY
 		}
 		if retry <= 0 {
-			s.Close()
-			logrus.Fatal("sd service not alive")
+			s.endChan <- struct{}{}
+			logrus.Info("restart sd ......")
+			s.init()
+			return
 		}
 	}
 }
