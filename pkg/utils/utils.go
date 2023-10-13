@@ -12,7 +12,6 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"syscall"
 	"time"
 )
 
@@ -167,17 +166,4 @@ func IsSame(key string, a, b interface{}) bool {
 		logrus.Fatal("type not support")
 	}
 	return true
-}
-
-// CheckProcessExist Check pid exist or not
-func CheckProcessExist(pid int) bool {
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	err = process.Signal(syscall.Signal(0))
-	if err == nil {
-		return true
-	}
-	return false
 }

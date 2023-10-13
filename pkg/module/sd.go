@@ -13,6 +13,8 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -78,7 +80,7 @@ func (s *SDManager) detectAlive() {
 	retry := SD_DETECT_RETEY
 	for s.flag {
 		time.Sleep(time.Duration(SD_DETECT_TIMEOUT) * time.Millisecond)
-		if !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) && !utils.CheckProcessExist(-s.pid) {
+		if !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) && !checkSdExist(strconv.Itoa(s.pid)) {
 			retry--
 		} else {
 			retry = SD_DETECT_RETEY
@@ -138,4 +140,12 @@ func UpdateSdConfig(configStore datastore.Datastore) error {
 
 	fdOut.WriteString(string(output))
 	return nil
+}
+
+func checkSdExist(pid string) bool {
+	execItem := utils.DoExec("ps -ef|grep webui|grep -v agent|grep -v grep|awk '{print $2}'", "")
+	if strings.Trim(execItem.Output, "\n") == pid {
+		return true
+	}
+	return false
 }
