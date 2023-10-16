@@ -282,7 +282,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /extra_image:
+  /extra_images:
     post:
       summary: image upcaling
       operationId: extraImages
