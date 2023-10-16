@@ -61,9 +61,15 @@ func InitFuncManager(funcStore datastore.Datastore) error {
 }
 
 // GetLastInvokeEndpoint get last invoke endpoint
-func (f *FuncManager) GetLastInvokeEndpoint() string {
-	f.lock.RLock()
-	defer f.lock.RUnlock()
+func (f *FuncManager) GetLastInvokeEndpoint(sdModel *string) string {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+	if sdModel == nil || *sdModel == "" {
+		return f.lastInvokeEndpoint
+	} else if endpoint := f.getEndpointFromCache(*sdModel); endpoint != "" {
+		f.lastInvokeEndpoint = endpoint
+		return endpoint
+	}
 	return f.lastInvokeEndpoint
 }
 

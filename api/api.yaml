@@ -282,7 +282,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /extra_images:
+  /extra_image:
     post:
       summary: image upcaling
       operationId: extraImages
@@ -850,6 +850,9 @@ components:
         - resize_mode
         - image
       properties:
+        stable_diffusion_model:
+          type: string
+          example: "sd checkpoint"
         resize_mode:
           type: integer
           format: int32

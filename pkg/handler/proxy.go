@@ -14,6 +14,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"strings"
 )
 
@@ -68,12 +70,31 @@ func (p *ProxyHandler) Login(c *gin.Context) {
 // Restart restart webui api server
 // (POST /restart)
 func (p *ProxyHandler) Restart(c *gin.Context) {
-	// update agent env
-	err := module.FuncManagerGlobal.UpdateAllFunctionEnv()
-	if err != nil {
-		handleError(c, http.StatusInternalServerError, config.INTERNALERROR)
+	if config.ConfigGlobal.IsServerTypeMatch(config.PROXY) {
+		//retransmission to control
+		target := config.ConfigGlobal.Downstream
+		remote, err := url.Parse(target)
+		if err != nil {
+			panic(err)
+		}
+		proxy := httputil.NewSingleHostReverseProxy(remote)
+		proxy.Director = func(req *http.Request) {
+			req.Header = c.Request.Header
+			req.Host = remote.Host
+			req.URL.Scheme = remote.Scheme
+			req.URL.Host = remote.Host
+		}
+		proxy.ServeHTTP(c.Writer, c.Request)
+	} else if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
+		// update agent env
+		err := module.FuncManagerGlobal.UpdateAllFunctionEnv()
+		if err != nil {
+			handleError(c, http.StatusInternalServerError, "update function env error")
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "success"})
+	} else {
+		c.JSON(http.StatusNotFound, gin.H{"message": "not support"})
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "success"})
 }
 
 // CancelTask predict task
@@ -82,7 +103,7 @@ func (p *ProxyHandler) CancelTask(c *gin.Context, taskId string) {
 	if err := p.taskStore.Update(taskId, map[string]interface{}{
 		datastore.KTaskCancel: int64(config.CANCEL_VALID),
 	}); err != nil {
-		handleError(c, http.StatusInternalServerError, config.INTERNALERROR)
+		handleError(c, http.StatusInternalServerError, "update task cancel error")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "success"})
@@ -124,7 +145,7 @@ func (p *ProxyHandler) ListModels(c *gin.Context) {
 			datastore.KModelOssPath, datastore.KModelEtag, datastore.KModelStatus, datastore.KModelCreateTime,
 			datastore.KModelModifyTime})
 		if err != nil {
-			handleError(c, http.StatusInternalServerError, config.INTERNALERROR)
+			handleError(c, http.StatusInternalServerError, "read model from db error")
 			return
 		}
 		c.JSON(http.StatusOK, convertToModelResponse(val))
@@ -209,7 +230,7 @@ func (p *ProxyHandler) DeleteModel(c *gin.Context, modelName string) {
 		datastore.KModelStatus:     config.MODEL_DELETE,
 		datastore.KModelModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
 	}); err != nil {
-		handleError(c, http.StatusInternalServerError, config.INTERNALERROR)
+		handleError(c, http.StatusInternalServerError, "update model status error")
 	} else {
 		c.JSON(http.StatusOK, gin.H{"message": "delete success"})
 	}
@@ -226,7 +247,7 @@ func (p *ProxyHandler) GetModel(c *gin.Context, modelName string) {
 		datastore.KModelOssPath, datastore.KModelEtag, datastore.KModelStatus, datastore.KModelCreateTime,
 		datastore.KModelModifyTime})
 	if err != nil {
-		handleError(c, http.StatusInternalServerError, config.INTERNALERROR)
+		handleError(c, http.StatusInternalServerError, "get model info from db error")
 		return
 	}
 	if data == nil || len(data) == 0 {
@@ -355,7 +376,7 @@ func (p *ProxyHandler) ExtraImages(c *gin.Context) {
 	endPoint := config.ConfigGlobal.Downstream
 	var err error
 	if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
-		if endPoint = module.FuncManagerGlobal.GetLastInvokeEndpoint(); endPoint == "" {
+		if endPoint = module.FuncManagerGlobal.GetLastInvokeEndpoint(request.StableDiffusionModel); endPoint == "" {
 			handleError(c, http.StatusInternalServerError, "not found valid endpoint")
 			return
 		}
