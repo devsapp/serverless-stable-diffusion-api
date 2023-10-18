@@ -474,7 +474,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 		// wait to valid
 		if concurrency.ConCurrencyGlobal.WaitToValid(sdModel) {
 			// cold start
-			logrus.WithFields(logrus.Fields{"taskId": taskId}).Info("cold start ....")
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Infof("sd %s cold start ....", sdModel)
 			defer concurrency.ConCurrencyGlobal.DecColdNum()
 		}
 		defer concurrency.ConCurrencyGlobal.DoneTask(sdModel, taskId)
@@ -606,7 +606,7 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 		// wait to valid
 		if concurrency.ConCurrencyGlobal.WaitToValid(sdModel) {
 			// cold start
-			logrus.WithFields(logrus.Fields{"taskId": taskId}).Info("cold start ....")
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Infof("sd %s cold start ....", sdModel)
 			defer concurrency.ConCurrencyGlobal.DecColdNum()
 		}
 		defer concurrency.ConCurrencyGlobal.DoneTask(sdModel, taskId)

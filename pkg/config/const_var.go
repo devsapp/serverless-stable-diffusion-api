@@ -122,5 +122,5 @@ const (
 )
 
 const (
-	ColdStartConcurrency = 2
+	ColdStartConcurrency = 10
 )
