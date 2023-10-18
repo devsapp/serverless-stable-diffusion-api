@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/client"
+	"github.com/devsapp/serverless-stable-diffusion-api/pkg/concurrency"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/models"
@@ -470,6 +471,13 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 	if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
 		// get endPoint
 		sdModel := request.StableDiffusionModel
+		// wait to valid
+		if concurrency.ConCurrencyGlobal.WaitToValid(sdModel) {
+			// cold start
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Info("cold start ....")
+			defer concurrency.ConCurrencyGlobal.DecColdNum()
+		}
+		defer concurrency.ConCurrencyGlobal.DoneTask(sdModel, taskId)
 		endPoint, err = module.FuncManagerGlobal.GetEndpoint(sdModel)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
@@ -595,6 +603,13 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 	if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
 		// get endPoint
 		sdModel := request.StableDiffusionModel
+		// wait to valid
+		if concurrency.ConCurrencyGlobal.WaitToValid(sdModel) {
+			// cold start
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Info("cold start ....")
+			defer concurrency.ConCurrencyGlobal.DecColdNum()
+		}
+		defer concurrency.ConCurrencyGlobal.DoneTask(sdModel, taskId)
 		endPoint, err = module.FuncManagerGlobal.GetEndpoint(sdModel)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{

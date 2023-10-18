@@ -67,12 +67,13 @@ type ConfigYaml struct {
 
 type ConfigEnv struct {
 	// account
-	AccountId       string
-	AccessKeyId     string
-	AccessKeySecret string
-	AccessKeyToken  string
-	Region          string
-	ServiceName     string
+	AccountId            string
+	AccessKeyId          string
+	AccessKeySecret      string
+	AccessKeyToken       string
+	Region               string
+	ServiceName          string
+	ColdStartConcurrency int32
 }
 
 type Config struct {
@@ -185,6 +186,14 @@ func (c *Config) updateFromEnv() {
 	}
 	if downstream != "" {
 		c.Downstream = downstream
+	}
+
+	coldStartConcurrency := os.Getenv(COLD_START_CONCURRENCY)
+	c.ColdStartConcurrency = ColdStartConcurrency
+	if coldStartConcurrency != "" {
+		if concurrency, err := strconv.Atoi(coldStartConcurrency); err == nil {
+			c.ColdStartConcurrency = int32(concurrency)
+		}
 	}
 }
 
