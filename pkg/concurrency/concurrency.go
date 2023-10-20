@@ -33,9 +33,14 @@ func (c *Concurrency) DoneTask(metric, taskId string) {
 		//logrus.Info(fmt.Sprintf("finish: %V, coldNum:%d", metricItem.(*Metric).window), *c.curColdNum)
 		return
 	}
-	logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("done task err: metric %s not exist", taskId)
+	logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("done task err: metric %s not exist", metric)
 }
 
-func (c *Concurrency) DecColdNum() {
+func (c *Concurrency) DecColdNum(metric, taskId string) {
+	if metricItem, ok := c.metrics.Load(metric); ok {
+		metricItem.(*Metric).SetColdFlag(false)
+	} else {
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("decColdNum task err: metric %s not exist", metric)
+	}
 	atomic.AddInt32(c.curColdNum, -1)
 }

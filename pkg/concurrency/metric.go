@@ -23,14 +23,18 @@ type Point struct {
 type Metric struct {
 	lock        sync.Mutex
 	window      []*Point
+	coldFlag    atomic.Bool
 	concurrency *int32
 }
 
 func NewMetric() *Metric {
 	var initConcurrency int32 = 0
+	coldFlag := atomic.Bool{}
+	coldFlag.Store(false)
 	return &Metric{
 		window:      make([]*Point, 0, windowLength),
 		concurrency: &initConcurrency,
+		coldFlag:    coldFlag,
 	}
 }
 
@@ -79,7 +83,7 @@ func (m *Metric) waitToValid(curColdNum *int32) bool {
 			atomic.AddInt32(m.concurrency, 1)
 			return false
 		} else {
-			if atomic.AddInt32(curColdNum, 1) <= config.ConfigGlobal.ColdStartConcurrency {
+			if atomic.AddInt32(curColdNum, 1) <= config.ConfigGlobal.ColdStartConcurrency && !m.coldFlag.Swap(true) {
 				atomic.AddInt32(m.concurrency, 1)
 				return true
 			} else {
@@ -90,6 +94,10 @@ func (m *Metric) waitToValid(curColdNum *int32) bool {
 		time.Sleep(time.Duration(period) * time.Second)
 	}
 	return false
+}
+
+func (m *Metric) SetColdFlag(flag bool) {
+	m.coldFlag.Store(flag)
 }
 
 func (m *Metric) findLeftNearestTime(val int64) int {

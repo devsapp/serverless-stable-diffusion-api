@@ -471,11 +471,12 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 	if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
 		// get endPoint
 		sdModel := request.StableDiffusionModel
+		c.Writer.Header().Set("model", sdModel)
 		// wait to valid
 		if concurrency.ConCurrencyGlobal.WaitToValid(sdModel) {
 			// cold start
 			logrus.WithFields(logrus.Fields{"taskId": taskId}).Infof("sd %s cold start ....", sdModel)
-			defer concurrency.ConCurrencyGlobal.DecColdNum()
+			defer concurrency.ConCurrencyGlobal.DecColdNum(sdModel, taskId)
 		}
 		defer concurrency.ConCurrencyGlobal.DoneTask(sdModel, taskId)
 		endPoint, err = module.FuncManagerGlobal.GetEndpoint(sdModel)
@@ -603,11 +604,12 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 	if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
 		// get endPoint
 		sdModel := request.StableDiffusionModel
+		c.Writer.Header().Set("model", sdModel)
 		// wait to valid
 		if concurrency.ConCurrencyGlobal.WaitToValid(sdModel) {
 			// cold start
 			logrus.WithFields(logrus.Fields{"taskId": taskId}).Infof("sd %s cold start ....", sdModel)
-			defer concurrency.ConCurrencyGlobal.DecColdNum()
+			defer concurrency.ConCurrencyGlobal.DecColdNum(sdModel, taskId)
 		}
 		defer concurrency.ConCurrencyGlobal.DoneTask(sdModel, taskId)
 		endPoint, err = module.FuncManagerGlobal.GetEndpoint(sdModel)

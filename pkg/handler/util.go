@@ -127,7 +127,7 @@ func Stat() gin.HandlerFunc {
 		reqUri := c.Request.RequestURI
 		statusCode := c.Writer.Status()
 		clientIP := c.ClientIP()
-		logrus.Infof("%s | %3d | %13v | %15s | %s | %s | %s",
+		logrus.Infof("%s | %3d | %13v | %15s | %s | %s | %s | %s",
 			config.ConfigGlobal.ServerName,
 			statusCode,
 			latencyTime,
@@ -137,6 +137,13 @@ func Stat() gin.HandlerFunc {
 			func() string {
 				if taskId := c.Writer.Header().Get("taskId"); taskId != "" {
 					return fmt.Sprintf("taskId=%s", taskId)
+				} else {
+					return ""
+				}
+			}(),
+			func() string {
+				if model := c.Writer.Header().Get("model"); model != "" {
+					return fmt.Sprintf("model=%s", model)
 				} else {
 					return ""
 				}
