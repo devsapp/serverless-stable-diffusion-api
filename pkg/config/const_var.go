@@ -65,27 +65,28 @@ const (
 
 // env
 const (
-	ACCOUNT_ID             = "FC_ACCOUNT_ID"
-	ACCESS_KEY_ID          = "ALIBABA_CLOUD_ACCESS_KEY_ID"
-	ACCESS_KEY_SECRET      = "ALIBABA_CLOUD_ACCESS_KEY_SECRET"
-	ACCESS_KET_TOKEN       = "ALIBABA_CLOUD_SECURITY_TOKEN"
-	REGION                 = "FC_REGION"
-	SERVICE_NAME           = "FC_SERVICE_NAME"
-	OTS_ENDPOINT           = "OTS_ENDPOINT"
-	OTS_INSTANCE           = "OTS_INSTANCE"
-	OSS_ENDPOINT           = "OSS_ENDPOINT"
-	OSS_BUCKET             = "OSS_BUCKET"
-	OSS_PATH               = "OSS_PATH"
-	OSS_MODE               = "OSS_MODE"
-	LOGINSWITCH            = "LOGIN_SWITCH"
-	USER_LOCAL_MODEL       = "USE_LOCAL_MODEL"
-	SD_IMAGE               = "SD_IMAGE"
-	FLEX_MODE              = "FLEX_MODE"
-	EXPOSE_TO_USER         = "EXPOSE_TO_USER"
-	SERVER_NAME            = "SERVER_NAME"
-	DOWNSTREAM             = "DOWNSTREAM"
-	GPU_MEMORY_SIZE        = "GPU_MEMORY_SIZE"
-	COLD_START_CONCURRENCY = "COLD_START_CONCURRENCY"
+	ACCOUNT_ID              = "FC_ACCOUNT_ID"
+	ACCESS_KEY_ID           = "ALIBABA_CLOUD_ACCESS_KEY_ID"
+	ACCESS_KEY_SECRET       = "ALIBABA_CLOUD_ACCESS_KEY_SECRET"
+	ACCESS_KET_TOKEN        = "ALIBABA_CLOUD_SECURITY_TOKEN"
+	REGION                  = "FC_REGION"
+	SERVICE_NAME            = "FC_SERVICE_NAME"
+	OTS_ENDPOINT            = "OTS_ENDPOINT"
+	OTS_INSTANCE            = "OTS_INSTANCE"
+	OSS_ENDPOINT            = "OSS_ENDPOINT"
+	OSS_BUCKET              = "OSS_BUCKET"
+	OSS_PATH                = "OSS_PATH"
+	OSS_MODE                = "OSS_MODE"
+	LOGINSWITCH             = "LOGIN_SWITCH"
+	USER_LOCAL_MODEL        = "USE_LOCAL_MODEL"
+	SD_IMAGE                = "SD_IMAGE"
+	FLEX_MODE               = "FLEX_MODE"
+	EXPOSE_TO_USER          = "EXPOSE_TO_USER"
+	SERVER_NAME             = "SERVER_NAME"
+	DOWNSTREAM              = "DOWNSTREAM"
+	GPU_MEMORY_SIZE         = "GPU_MEMORY_SIZE"
+	COLD_START_CONCURRENCY  = "COLD_START_CONCURRENCY"
+	MODEL_COLD_START_SERIAL = "MODEL_COLD_START_SERIAL"
 )
 
 // function http trigger
@@ -123,4 +124,5 @@ const (
 
 const (
 	ColdStartConcurrency = 10
+	ModelColdStartSerial = false
 )

@@ -83,7 +83,9 @@ func (m *Metric) waitToValid(curColdNum *int32) bool {
 			atomic.AddInt32(m.concurrency, 1)
 			return false
 		} else {
-			if atomic.AddInt32(curColdNum, 1) <= config.ConfigGlobal.ColdStartConcurrency && !m.coldFlag.Swap(true) {
+			if atomic.AddInt32(curColdNum, 1) <= config.ConfigGlobal.ColdStartConcurrency &&
+				(!config.ConfigGlobal.ModelColdStartSerial ||
+					(config.ConfigGlobal.ModelColdStartSerial && !m.coldFlag.Swap(true))) {
 				atomic.AddInt32(m.concurrency, 1)
 				return true
 			} else {
@@ -97,7 +99,9 @@ func (m *Metric) waitToValid(curColdNum *int32) bool {
 }
 
 func (m *Metric) SetColdFlag(flag bool) {
-	m.coldFlag.Store(flag)
+	if config.ConfigGlobal.ModelColdStartSerial {
+		m.coldFlag.Store(flag)
+	}
 }
 
 func (m *Metric) findLeftNearestTime(val int64) int {

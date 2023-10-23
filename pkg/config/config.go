@@ -74,6 +74,7 @@ type ConfigEnv struct {
 	Region               string
 	ServiceName          string
 	ColdStartConcurrency int32
+	ModelColdStartSerial bool
 }
 
 type Config struct {
@@ -193,6 +194,13 @@ func (c *Config) updateFromEnv() {
 	if coldStartConcurrency != "" {
 		if concurrency, err := strconv.Atoi(coldStartConcurrency); err == nil {
 			c.ColdStartConcurrency = int32(concurrency)
+		}
+	}
+	modelColdStartSerial := os.Getenv(MODEL_COLD_START_SERIAL)
+	c.ModelColdStartSerial = ModelColdStartSerial
+	if modelColdStartSerial != "" {
+		if serial, err := strconv.ParseBool(modelColdStartSerial); err == nil {
+			c.ModelColdStartSerial = serial
 		}
 	}
 }
