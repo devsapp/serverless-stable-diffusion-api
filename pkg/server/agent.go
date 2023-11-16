@@ -34,6 +34,13 @@ func NewAgentServer(port string, dbType datastore.DatastoreType, mode string) (*
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
 	router.Use(handler.Stat())
+	tableFactory := datastore.DatastoreFactory{}
+	// init function table
+	funcDataStore := tableFactory.NewTable(dbType, datastore.KModelServiceTableName)
+	// init func manager
+	if err := module.InitFuncManager(funcDataStore); err != nil {
+		return nil, err
+	}
 	if config.ConfigGlobal.ExposeToUser() {
 		agentServer.sdManager = module.NewSDManager(config.ConfigGlobal.GetSDPort())
 		// enable ReverserProxy
@@ -44,7 +51,6 @@ func NewAgentServer(port string, dbType datastore.DatastoreType, mode string) (*
 		if err := module.NewOssManager(); err != nil {
 			logrus.Fatal("oss init fail")
 		}
-		tableFactory := datastore.DatastoreFactory{}
 		// init task table
 		taskDataStore := tableFactory.NewTable(dbType, datastore.KTaskTableName)
 		// init model table
@@ -68,6 +74,7 @@ func NewAgentServer(port string, dbType datastore.DatastoreType, mode string) (*
 		agentServer.sdManager = module.NewSDManager(config.ConfigGlobal.GetSDPort())
 
 		handler.RegisterHandlers(router, agentHandler)
+		router.NoRoute(agentHandler.NoRouterAgentHandler)
 		agentServer.listenTask = listenTask
 		agentServer.taskDataStore = taskDataStore
 		agentServer.modelDataStore = modelDataStore
@@ -109,9 +116,15 @@ func (p *AgentServer) Close(shutdownTimeout time.Duration) error {
 	if p.sdManager != nil {
 		p.sdManager.Close()
 	}
+
 	if log.SDLogInstance != nil {
 		log.SDLogInstance.Close()
 	}
+
+	//if module.ProxyGlobal != nil {
+	//	module.ProxyGlobal.Close()
+	//}
+
 	// shutdown server
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()

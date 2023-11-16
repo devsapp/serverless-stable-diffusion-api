@@ -71,6 +71,7 @@ func NewProxyServer(port string, dbType datastore.DatastoreType, mode string) (*
 		router.Use(handler.ApiAuth())
 	}
 	handler.RegisterHandlers(router, proxyHandler)
+	router.NoRoute(proxyHandler.NoRouterHandler)
 
 	return &ProxyServer{
 		srv: &http.Server{

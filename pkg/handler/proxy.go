@@ -941,7 +941,12 @@ func (p *ProxyHandler) NoRouterHandler(c *gin.Context) {
 			defer concurrency.ConCurrencyGlobal.DecColdNum(sdModel, taskId)
 		}
 		defer concurrency.ConCurrencyGlobal.DoneTask(sdModel, taskId)
-		endPoint, err = module.FuncManagerGlobal.GetEndpoint(sdModel)
+		if sdModel == "" {
+			endPoint = module.FuncManagerGlobal.GetLastInvokeEndpoint(&sdModel)
+		} else {
+			endPoint, err = module.FuncManagerGlobal.GetEndpoint(sdModel)
+		}
+
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 				TaskId:  taskId,
