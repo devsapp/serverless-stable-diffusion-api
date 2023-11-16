@@ -523,8 +523,6 @@ components:
           example: true
         script_args:
           type: array
-          items:
-            type: object
           example: [{ "argKey": "argValue" }]
         sampler_index:
           type: string
@@ -708,8 +706,6 @@ components:
           example: false
         script_args:
           type: array
-          items:
-            type: string
           example: ["arg1", "arg2"]
         sampler_index:
           type: string

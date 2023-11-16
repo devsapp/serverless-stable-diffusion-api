@@ -62,9 +62,10 @@ func (u *userManager) loadUserFromDb() error {
 		})
 	}
 	if needInit {
+		defaultEncodePassword, _ := utils.EncryptPassword(DefaultPasswd)
 		u.userStore.Put(DefaultUser, map[string]interface{}{
 			datastore.KUserName:     DefaultUser,
-			datastore.KUserPassword: DefaultPasswd,
+			datastore.KUserPassword: defaultEncodePassword,
 		})
 	}
 	return nil
@@ -77,7 +78,7 @@ func (u *userManager) VerifyUserValid(userName, password string) (string, int, b
 		return "", 0, false
 	}
 	passwordDb := data[datastore.KUserPassword].(string)
-	if password == passwordDb {
+	if utils.MatchPassword(password, passwordDb) {
 		session := utils.RandStr(SESSIONLENGTH)
 		expired := int(utils.TimestampS() + config.ConfigGlobal.SessionExpire)
 		u.cache.Store(session, &userSession{
