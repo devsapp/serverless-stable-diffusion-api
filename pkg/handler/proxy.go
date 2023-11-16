@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,8 @@ import (
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -341,11 +344,10 @@ func (p *ProxyHandler) GetTaskProgress(c *gin.Context, taskId string) {
 		}
 	}
 	if status, ok := data[datastore.KTaskStatus]; ok && (status == config.TASK_FINISH || status == config.TASK_FAILED) {
-		resp.Progress = 100
+		resp.Progress = 1
 	}
 	resp.TaskId = taskId
 	c.JSON(http.StatusOK, resp)
-
 }
 
 // ExtraImages image upcaling
@@ -416,7 +418,7 @@ func (p *ProxyHandler) ExtraImages(c *gin.Context) {
 		if err != nil {
 			logrus.WithFields(logrus.Fields{"taskId": taskId}).Error(err.Error())
 		} else {
-			logrus.WithFields(logrus.Fields{"taskId": taskId}).Error("%v", resp)
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("%v", resp)
 		}
 		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 			TaskId:  taskId,
@@ -549,7 +551,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 		if err != nil {
 			logrus.WithFields(logrus.Fields{"taskId": taskId}).Error(err.Error())
 		} else {
-			logrus.WithFields(logrus.Fields{"taskId": taskId}).Error("%v", resp)
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("%v", resp)
 		}
 		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 			TaskId:  taskId,
@@ -893,4 +895,141 @@ func isAsync(invokeType string) bool {
 		return false
 	}
 	return true
+}
+
+func (p *ProxyHandler) NoRouterHandler(c *gin.Context) {
+	username := c.GetHeader(userKey)
+	if username == "" {
+		if config.ConfigGlobal.EnableLogin() {
+			handleError(c, http.StatusBadRequest, config.BADREQUEST)
+			return
+		} else {
+			username = DEFAULT_USER
+		}
+	}
+	taskId := ""
+	if isTask := c.GetHeader("Task-Flag"); isTask == "true" {
+		// taskId
+		taskId = c.GetHeader(taskKey)
+		if taskId == "" {
+			// init taskId
+			taskId = utils.RandStr(taskIdLength)
+		}
+		c.Writer.Header().Set("taskId", taskId)
+	}
+	// control
+	endPoint := config.ConfigGlobal.Downstream
+	// get endPoint
+	sdModel := ""
+	body, _ := io.ReadAll(c.Request.Body)
+	defer c.Request.Body.Close()
+	if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
+		// extra body
+		request := make(map[string]interface{})
+		err := json.Unmarshal(body, &request)
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+		}
+		if sd, ok := request["StableDiffusionModel"]; ok {
+			sdModel = sd.(string)
+		}
+		c.Writer.Header().Set("model", sdModel)
+		// wait to valid
+		if concurrency.ConCurrencyGlobal.WaitToValid(sdModel) {
+			// cold start
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Infof("sd %s cold start ....", sdModel)
+			defer concurrency.ConCurrencyGlobal.DecColdNum(sdModel, taskId)
+		}
+		defer concurrency.ConCurrencyGlobal.DoneTask(sdModel, taskId)
+		endPoint, err = module.FuncManagerGlobal.GetEndpoint(sdModel)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
+				TaskId:  taskId,
+				Status:  config.TASK_FAILED,
+				Message: utils.String(config.NOFOUNDENDPOINT),
+			})
+			return
+		}
+	}
+	// proxy
+	if config.ConfigGlobal.IsServerTypeMatch(config.PROXY) {
+		// check request valid: sdModel and sdVae exist
+		if sdModel != "" {
+			if existed := p.checkModelExist(sdModel, "None"); !existed {
+				handleError(c, http.StatusNotFound, "model not found, please check request")
+				return
+			}
+		}
+		if taskId != "" {
+			// write db
+			if err := p.taskStore.Put(taskId, map[string]interface{}{
+				datastore.KTaskIdColumnName: taskId,
+				datastore.KTaskUser:         username,
+				datastore.KTaskStatus:       config.TASK_QUEUE,
+				datastore.KTaskCancel:       int64(config.CANCEL_INIT),
+				datastore.KTaskCreateTime:   fmt.Sprintf("%d", utils.TimestampS()),
+			}); err != nil {
+				logrus.WithFields(logrus.Fields{"taskId": taskId}).Error("[Error] put db err=", err.Error())
+				c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
+					TaskId:  taskId,
+					Status:  config.TASK_FAILED,
+					Message: utils.String(err.Error()),
+				})
+				return
+			}
+			c.Header("taskId", taskId)
+		}
+	}
+	req, err := http.NewRequest(c.Request.Method, fmt.Sprintf("%s%s", endPoint, c.Request.URL.String()),
+		bytes.NewReader(body))
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	req.Header = c.Request.Header
+	if taskId != "" {
+		req.Header.Set("taskId", taskId)
+	}
+	if isAsync(c.GetHeader(requestType)) {
+		req.Header.Set(FcAsyncKey, "Async")
+	}
+	req.Header.Set(userKey, username)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	if isAsync(c.GetHeader(requestType)) {
+		if err != nil || (resp.StatusCode != syncSuccessCode && resp.StatusCode != asyncSuccessCode) {
+			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
+				TaskId:  taskId,
+				Status:  config.TASK_FAILED,
+				Message: utils.String(config.INTERNALERROR),
+			})
+		} else {
+			c.JSON(http.StatusOK, models.SubmitTaskResponse{
+				TaskId: taskId,
+				Status: func() string {
+					if resp.StatusCode == syncSuccessCode {
+						return config.TASK_FINISH
+					}
+					if resp.StatusCode == asyncSuccessCode {
+						return config.TASK_QUEUE
+					}
+					return config.TASK_FAILED
+				}(),
+			})
+		}
+	} else {
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			c.String(http.StatusInternalServerError, err.Error())
+			return
+		}
+		c.Data(http.StatusOK, resp.Header.Get("Content-Type"), body)
+	}
 }

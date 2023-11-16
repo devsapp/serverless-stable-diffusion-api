@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
@@ -28,6 +29,7 @@ const (
 	requestFail      = 422
 	asyncSuccessCode = 202
 	syncSuccessCode  = 200
+	base64MinLen     = 2048
 )
 
 func getBindResult(c *gin.Context, in interface{}) error {
@@ -150,4 +152,95 @@ func Stat() gin.HandlerFunc {
 			}(),
 		)
 	}
+}
+
+func convertImgToBase64(body []byte) ([]byte, error) {
+	var request map[string]interface{}
+	if err := json.Unmarshal(body, &request); err != nil {
+		return body, err
+	}
+	parseMap(request, "", "", nil)
+	if newRequest, err := json.Marshal(request); err != nil {
+		return body, err
+	} else {
+		return newRequest, nil
+	}
+}
+
+func convertBase64ToImg(body []byte, taskId, user string) ([]byte, error) {
+	idx := 1
+	var request map[string]interface{}
+	if err := json.Unmarshal(body, &request); err == nil {
+		newRequest := parseMap(request, taskId, user, &idx)
+		if newBody, err := json.Marshal(newRequest); err != nil {
+			return body, err
+		} else {
+			return newBody, nil
+		}
+	} else {
+		var request []interface{}
+		if err := json.Unmarshal(body, &request); err == nil {
+			newRequest := parseArray(request, taskId, user, &idx)
+			if newBody, err := json.Marshal(newRequest); err != nil {
+				return body, err
+			} else {
+				return newBody, nil
+			}
+		}
+	}
+	return body, nil
+}
+
+func parseMap(aMap map[string]interface{}, taskId, user string, idx *int) map[string]interface{} {
+	for key, val := range aMap {
+		switch concreteVal := val.(type) {
+		case map[string]interface{}:
+			aMap[key] = parseMap(val.(map[string]interface{}), taskId, user, idx)
+		case []interface{}:
+			aMap[key] = parseArray(val.([]interface{}), taskId, user, idx)
+		case string:
+			if isImgPath(concreteVal) {
+				base64, err := module.OssGlobal.DownloadFileToBase64(concreteVal)
+				if err == nil {
+					aMap[key] = *base64
+				}
+			} else if len(concreteVal) > base64MinLen {
+				ossPath := fmt.Sprintf("images/%s/%s_%d.png", user, taskId, *idx)
+				// check base64
+				if err := uploadImages(&ossPath, &concreteVal); err == nil {
+					*idx += 1
+					aMap[key] = ossPath
+				}
+
+			}
+		}
+	}
+	return aMap
+}
+
+func parseArray(anArray []interface{}, taskId, user string, idx *int) []interface{} {
+	for i, val := range anArray {
+		switch concreteVal := val.(type) {
+		case map[string]interface{}:
+			anArray[i] = parseMap(val.(map[string]interface{}), taskId, user, idx)
+		case []interface{}:
+			anArray[i] = parseArray(val.([]interface{}), taskId, user, idx)
+		case string:
+			if isImgPath(concreteVal) {
+				base64, err := module.OssGlobal.DownloadFileToBase64(concreteVal)
+				if err == nil {
+					anArray[i] = *base64
+				}
+			} else if len(concreteVal) > base64MinLen {
+				ossPath := fmt.Sprintf("images/%s/%s_%d.png", user, taskId, *idx)
+				// check base64
+				if err := uploadImages(&ossPath, &concreteVal); err == nil {
+					*idx += 1
+					anArray[i] = ossPath
+				}
+
+			}
+		}
+	}
+	return anArray
 }

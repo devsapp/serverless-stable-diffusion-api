@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -153,7 +154,7 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 	// async progress
 	go func() {
 		if err := a.taskProgress(ctx, username, taskId); err != nil {
-			logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorln(
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf(
 				"update task progress error %s", err.Error())
 		}
 	}()
@@ -544,29 +545,42 @@ func preprocessRequest(req any) error {
 	return nil
 }
 func updateControlNet(alwaysonScripts *map[string]interface{}) error {
-	controlNet, ok := (*alwaysonScripts)["controlnet"]
-	if !ok {
-		return nil
-	}
-	args, ok := controlNet.(map[string]interface{})["args"]
-	if !ok {
-		return nil
-	}
-	for i, item := range args.([]interface{}) {
-		if val, ok := item.(map[string]interface{})["image"]; ok {
-			inputImage := val.(string)
-			if !isImgPath(inputImage) {
-				continue
-			}
-			// oss image to base64
-			if base64Str, err := module.OssGlobal.DownloadFileToBase64(inputImage); err == nil {
-				args.([]interface{})[i].(map[string]interface{})["image"] = *base64Str
-			} else {
-				return err
-			}
-		}
-	}
-	(*alwaysonScripts)["controlnet"] = map[string]interface{}{"args": args}
+	*alwaysonScripts = parseMap(*alwaysonScripts, "", "", nil)
+	//controlNet, ok := (*alwaysonScripts)["controlnet"]
+	//if !ok {
+	//	return nil
+	//}
+	//args, ok := controlNet.(map[string]interface{})["args"]
+	//if !ok {
+	//	return nil
+	//}
+	//for i, item := range args.([]interface{}) {
+	//	if val, ok := item.(map[string]interface{})["image"]; ok && val != nil {
+	//		inputImage := val.(string)
+	//		if !isImgPath(inputImage) {
+	//			continue
+	//		}
+	//		// oss image to base64
+	//		if base64Str, err := module.OssGlobal.DownloadFileToBase64(inputImage); err == nil {
+	//			args.([]interface{})[i].(map[string]interface{})["image"] = *base64Str
+	//		} else {
+	//			return err
+	//		}
+	//	}
+	//	if val, ok := item.(map[string]interface{})["mask"]; ok && val != nil {
+	//		inputImage := val.(string)
+	//		if !isImgPath(inputImage) {
+	//			continue
+	//		}
+	//		// oss image to base64
+	//		if base64Str, err := module.OssGlobal.DownloadFileToBase64(inputImage); err == nil {
+	//			args.([]interface{})[i].(map[string]interface{})["mask"] = *base64Str
+	//		} else {
+	//			return err
+	//		}
+	//	}
+	//}
+	//(*alwaysonScripts)["controlnet"] = map[string]interface{}{"args": args}
 	return nil
 }
 
@@ -626,13 +640,13 @@ func (a *AgentHandler) UpdateOptions(c *gin.Context) {
 
 // Login user login
 // (POST /login)
-func (p *AgentHandler) Login(c *gin.Context) {
+func (a *AgentHandler) Login(c *gin.Context) {
 	c.String(http.StatusNotFound, "api not support")
 }
 
 // Restart user login
 // (POST /restart)
-func (p *AgentHandler) Restart(c *gin.Context) {
+func (a *AgentHandler) Restart(c *gin.Context) {
 	c.String(http.StatusNotFound, "api not support")
 }
 
@@ -642,6 +656,9 @@ func ReverseProxy(c *gin.Context) {
 	if err != nil {
 		panic(err)
 	}
+	requestId := c.GetHeader("x-fc-request-id")
+	log.SDLogInstance.AddRequestId(requestId)
+	defer log.SDLogInstance.DelRequestId(requestId)
 	proxy := httputil.NewSingleHostReverseProxy(remote)
 	proxy.Director = func(req *http.Request) {
 		req.Header = c.Request.Header
@@ -649,5 +666,83 @@ func ReverseProxy(c *gin.Context) {
 		req.URL.Scheme = remote.Scheme
 		req.URL.Host = remote.Host
 	}
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		resp.Header.Del("Access-Control-Allow-Origin")
+		resp.Header.Del("Access-Control-Expose-Headers")
+		resp.Header.Del("Access-Control-Max-Age")
+		resp.Header.Del("Access-Control-Allow-Credentials")
+		resp.Header.Del("Access-Control-Allow-Methods")
+		resp.Header.Del("Access-Control-Allow-Headers")
+		return nil
+	}
 	proxy.ServeHTTP(c.Writer, c.Request)
+}
+
+func (a *AgentHandler) NoRouterAgentHandler(c *gin.Context) {
+	username := c.GetHeader(userKey)
+	// taskId
+	taskId := c.GetHeader(taskKey)
+	c.Writer.Header().Set("taskId", taskId)
+	if taskId != "" {
+		// update task status
+		if err := a.taskStore.Update(taskId, map[string]interface{}{
+			datastore.KTaskStatus: config.TASK_INPROGRESS,
+		}); err != nil {
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("put db err=%s", err.Error())
+			handleError(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+	body, err := io.ReadAll(c.Request.Body)
+	defer c.Request.Body.Close()
+	if err != nil {
+		handleError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	newBody, err := convertImgToBase64(body)
+	if err != nil {
+		handleError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	req, err := http.NewRequest(c.Request.Method,
+		fmt.Sprintf("%s%s", config.ConfigGlobal.SdUrlPrefix,
+			c.Request.URL.String()), bytes.NewBuffer(newBody))
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	req.Header = c.Request.Header
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer resp.Body.Close()
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	respBody, err := convertBase64ToImg(body, taskId, username)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	if taskId != "" {
+		if err := a.taskStore.Update(taskId, map[string]interface{}{
+			datastore.KTaskCode:       int64(resp.StatusCode),
+			datastore.KTaskStatus:     config.TASK_FINISH,
+			datastore.KTaskImage:      "",
+			datastore.KTaskParams:     "{}",
+			datastore.KTaskInfo:       string(respBody),
+			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+		}); err != nil {
+			logrus.WithFields(logrus.Fields{"taskId": taskId}).Error(err.Error())
+			c.String(http.StatusInternalServerError, err.Error())
+		}
+	}
+	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), respBody)
 }
