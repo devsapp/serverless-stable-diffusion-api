@@ -924,14 +924,17 @@ func (p *ProxyHandler) NoRouterHandler(c *gin.Context) {
 	body, _ := io.ReadAll(c.Request.Body)
 	defer c.Request.Body.Close()
 	if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
-		// extra body
-		request := make(map[string]interface{})
-		err := json.Unmarshal(body, &request)
-		if err != nil {
-			c.String(http.StatusBadRequest, err.Error())
-		}
-		if sd, ok := request["StableDiffusionModel"]; ok {
-			sdModel = sd.(string)
+		if c.Request.Method != http.MethodGet && c.Request.Method != http.MethodDelete {
+			// extra body
+			request := make(map[string]interface{})
+			err := json.Unmarshal(body, &request)
+			if err != nil {
+				c.String(http.StatusBadRequest, err.Error())
+				return
+			}
+			if sd, ok := request["StableDiffusionModel"]; ok {
+				sdModel = sd.(string)
+			}
 		}
 		c.Writer.Header().Set("model", sdModel)
 		// wait to valid
@@ -941,12 +944,13 @@ func (p *ProxyHandler) NoRouterHandler(c *gin.Context) {
 			defer concurrency.ConCurrencyGlobal.DecColdNum(sdModel, taskId)
 		}
 		defer concurrency.ConCurrencyGlobal.DoneTask(sdModel, taskId)
-		logrus.Info(sdModel)
+		var err error
 		if sdModel == "" {
 			endPoint = module.FuncManagerGlobal.GetLastInvokeEndpoint(&sdModel)
 		} else {
 			endPoint, err = module.FuncManagerGlobal.GetEndpoint(sdModel)
 		}
+		logrus.Info(sdModel, ",", endPoint)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{

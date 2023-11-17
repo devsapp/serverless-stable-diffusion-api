@@ -137,7 +137,7 @@ func (f *FuncManager) UpdateFunctionEnv(key, modelName string) error {
 	env := getEnv(modelName)
 	functionName := getFunctionName(key)
 	if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
-		new(fc.UpdateFunctionRequest).SetGpuMemorySize(config.ConfigGlobal.GpuMemorySize).
+		new(fc.UpdateFunctionRequest).SetRuntime("custom-container").SetGpuMemorySize(config.ConfigGlobal.GpuMemorySize).
 			SetEnvironmentVariables(env)); err != nil {
 		logrus.Info(err.Error())
 		return err
@@ -147,7 +147,6 @@ func (f *FuncManager) UpdateFunctionEnv(key, modelName string) error {
 
 // UpdateFunctionImage update instance Image
 func (f *FuncManager) UpdateFunctionImage(key string) error {
-	logrus.Info("update function image key=", key)
 	functionName := getFunctionName(key)
 	if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
 		new(fc.UpdateFunctionRequest).SetRuntime("custom-container").SetGpuMemorySize(config.ConfigGlobal.GpuMemorySize).
