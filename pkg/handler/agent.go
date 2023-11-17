@@ -656,9 +656,9 @@ func ReverseProxy(c *gin.Context) {
 	if err != nil {
 		panic(err)
 	}
-	requestId := c.GetHeader("x-fc-request-id")
-	log.SDLogInstance.AddRequestId(requestId)
-	defer log.SDLogInstance.DelRequestId(requestId)
+	//requestId := c.GetHeader("x-fc-request-id")
+	//log.SDLogInstance.AddRequestId(requestId)
+	//defer log.SDLogInstance.DelRequestId(requestId)
 	proxy := httputil.NewSingleHostReverseProxy(remote)
 	proxy.Director = func(req *http.Request) {
 		req.Header = c.Request.Header
@@ -699,14 +699,16 @@ func (a *AgentHandler) NoRouterAgentHandler(c *gin.Context) {
 		handleError(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	newBody, err := convertImgToBase64(body)
-	if err != nil {
-		handleError(c, http.StatusBadRequest, err.Error())
-		return
+	if c.Request.Method != http.MethodGet && c.Request.Method != http.MethodDelete {
+		body, err = convertImgToBase64(body)
+		if err != nil {
+			handleError(c, http.StatusBadRequest, err.Error())
+			return
+		}
 	}
 	req, err := http.NewRequest(c.Request.Method,
 		fmt.Sprintf("%s%s", config.ConfigGlobal.SdUrlPrefix,
-			c.Request.URL.String()), bytes.NewBuffer(newBody))
+			c.Request.URL.String()), bytes.NewBuffer(body))
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
