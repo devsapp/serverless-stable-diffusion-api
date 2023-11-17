@@ -80,7 +80,7 @@ func (f *FuncManager) GetLastInvokeEndpoint(sdModel *string) string {
 // third create function and return endpoint
 func (f *FuncManager) GetEndpoint(sdModel string) (string, error) {
 	key := "default"
-	if config.ConfigGlobal.GetFlexMode() == config.MultiFunc {
+	if config.ConfigGlobal.GetFlexMode() == config.MultiFunc && sdModel != "" {
 		key = sdModel
 	}
 	// retry
@@ -147,6 +147,7 @@ func (f *FuncManager) UpdateFunctionEnv(key, modelName string) error {
 
 // UpdateFunctionImage update instance Image
 func (f *FuncManager) UpdateFunctionImage(key string) error {
+	logrus.Info("update function image key=", key)
 	functionName := getFunctionName(key)
 	if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
 		new(fc.UpdateFunctionRequest).SetGpuMemorySize(config.ConfigGlobal.GpuMemorySize).
@@ -195,6 +196,23 @@ func (f *FuncManager) createFunc(key, sdModel string, env map[string]*string) st
 	return ""
 }
 
+// GetFcFuncEnv get fc function env info
+func (f *FuncManager) GetFcFuncEnv(functionName string) *map[string]*string {
+	if funcBody := f.GetFcFunc(functionName); funcBody != nil {
+		return &funcBody.Body.EnvironmentVariables
+	}
+	return nil
+}
+
+// GetFcFunc  get fc function info
+func (f *FuncManager) GetFcFunc(functionName string) *fc.GetFunctionResponse {
+	serviceName := config.ConfigGlobal.ServiceName
+	if resp, err := f.fcClient.GetFunction(&serviceName, &functionName, &fc.GetFunctionRequest{}); err == nil {
+		return resp
+	}
+	return nil
+}
+
 // load endpoint from db
 func (f *FuncManager) loadFunc() {
 	// load func from db
@@ -206,7 +224,9 @@ func (f *FuncManager) loadFunc() {
 		if image != "" && config.ConfigGlobal.Image != "" &&
 			image != config.ConfigGlobal.Image {
 			// update function image
-			f.UpdateFunctionImage(key)
+			if err := f.UpdateFunctionImage(key); err != nil {
+				logrus.Info("update function image err=", err.Error())
+			}
 			// update db
 			f.funcStore.Update(key, map[string]interface{}{
 				datastore.KModelServerImage: config.ConfigGlobal.Image,

@@ -941,6 +941,7 @@ func (p *ProxyHandler) NoRouterHandler(c *gin.Context) {
 			defer concurrency.ConCurrencyGlobal.DecColdNum(sdModel, taskId)
 		}
 		defer concurrency.ConCurrencyGlobal.DoneTask(sdModel, taskId)
+		logrus.Info(sdModel)
 		if sdModel == "" {
 			endPoint = module.FuncManagerGlobal.GetLastInvokeEndpoint(&sdModel)
 		} else {
