@@ -715,7 +715,7 @@ func (a *AgentHandler) NoRouterAgentHandler(c *gin.Context) {
 	}
 
 	req.Header = c.Request.Header
-
+	req.Header.Set("Accept-Encoding", "identity")
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
