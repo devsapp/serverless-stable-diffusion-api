@@ -150,7 +150,7 @@ func (f *FuncManager) UpdateFunctionImage(key string) error {
 	logrus.Info("update function image key=", key)
 	functionName := getFunctionName(key)
 	if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
-		new(fc.UpdateFunctionRequest).SetGpuMemorySize(config.ConfigGlobal.GpuMemorySize).
+		new(fc.UpdateFunctionRequest).SetRuntime("custom-container").SetGpuMemorySize(config.ConfigGlobal.GpuMemorySize).
 			SetCustomContainerConfig(new(fc.CustomContainerConfig).
 				SetImage(config.ConfigGlobal.Image))); err != nil {
 		return err
