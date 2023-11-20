@@ -204,7 +204,10 @@ func parseMap(aMap map[string]interface{}, taskId, user string, idx *int) map[st
 				if err == nil {
 					aMap[key] = *base64
 				}
-			} else if len(concreteVal) > base64MinLen {
+			} else if idx != nil && len(concreteVal) > base64MinLen {
+				if taskId == "" {
+					taskId = utils.RandStr(taskIdLength)
+				}
 				ossPath := fmt.Sprintf("images/%s/%s_%d.png", user, taskId, *idx)
 				// check base64
 				if err := uploadImages(&ossPath, &concreteVal); err == nil {
@@ -231,7 +234,10 @@ func parseArray(anArray []interface{}, taskId, user string, idx *int) []interfac
 				if err == nil {
 					anArray[i] = *base64
 				}
-			} else if len(concreteVal) > base64MinLen {
+			} else if idx != nil && len(concreteVal) > base64MinLen {
+				if taskId == "" {
+					taskId = utils.RandStr(taskIdLength)
+				}
 				ossPath := fmt.Sprintf("images/%s/%s_%d.png", user, taskId, *idx)
 				// check base64
 				if err := uploadImages(&ossPath, &concreteVal); err == nil {
