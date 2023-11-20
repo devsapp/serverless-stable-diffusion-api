@@ -908,7 +908,7 @@ func (p *ProxyHandler) NoRouterHandler(c *gin.Context) {
 		}
 	}
 	taskId := ""
-	if isTask := c.GetHeader("Task-Flag"); isTask == "true" {
+	if isTask := c.GetHeader("Task-Flag"); isTask == "true" || isAsync(c.GetHeader(requestType)) {
 		// taskId
 		taskId = c.GetHeader(taskKey)
 		if taskId == "" {
@@ -950,7 +950,6 @@ func (p *ProxyHandler) NoRouterHandler(c *gin.Context) {
 		} else {
 			endPoint, err = module.FuncManagerGlobal.GetEndpoint(sdModel)
 		}
-		logrus.Info(sdModel, ",", endPoint)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
