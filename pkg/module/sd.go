@@ -56,7 +56,8 @@ func (s *SDManager) getEnv() []string {
 		fileMgrEndpoint = fmt.Sprintf("http://%s.%s.%s.%s.fc.devsapp.net", fileMgrName,
 			config.ConfigGlobal.ServiceName, config.ConfigGlobal.AccountId, config.ConfigGlobal.Region)
 	}
-	env = append(env,
+	env = append(
+		os.Environ(),
 		fmt.Sprintf("SERVERLESS_SD_FILEMGR_TOKEN=%s", fileMgrToken),
 		fmt.Sprintf("SERVERLESS_SD_FILEMGR_DOMAIN=%s", fileMgrEndpoint))
 

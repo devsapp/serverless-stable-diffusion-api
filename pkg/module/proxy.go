@@ -58,7 +58,6 @@ func (p *Proxy) init() {
 }
 
 func (p *Proxy) handleHTTP(w http.ResponseWriter, req *http.Request) {
-	logrus.Infof("proxy:%V, %s", req, p.isHuggingFaceOk)
 	if !p.isHuggingFaceOk {
 		switch strings.ToLower(req.URL.Hostname()) {
 		case "huggingface.co":
