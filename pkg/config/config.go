@@ -97,7 +97,7 @@ func (c *Config) IsServerTypeMatch(name string) bool {
 }
 
 func (c *Config) ExposeToUser() bool {
-	return os.Getenv(MODEL_SD) != ""
+	return os.Getenv(MODEL_SD) == ""
 }
 
 // GetFlexMode flex mode

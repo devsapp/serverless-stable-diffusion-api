@@ -121,12 +121,7 @@ func (s *SDLog) consumeLog() {
 				logrus.Info(logStr)
 			}
 		case <-s.closeLog:
-			if len(s.cacheLog) > 0 {
-				if body, err := json.Marshal(s.cacheLog); err == nil {
-					go monitor.Post(body, logPath)
-				}
-			}
-			break
+			return
 		}
 	}
 }
@@ -153,11 +148,6 @@ func (s *SDLog) consumeTrace() {
 
 			}
 		case <-s.closeTrace:
-			if len(s.cacheTrace) > 0 {
-				if body, err := json.Marshal(s.cacheTrace); err == nil {
-					go monitor.Post(body, tracePath)
-				}
-			}
 			return
 		}
 	}
@@ -178,4 +168,16 @@ func (s *SDLog) DelRequestId(requestId string) {
 func (s *SDLog) Close() {
 	s.closeLog <- struct{}{}
 	s.closeTrace <- struct{}{}
+	// send trace
+	if len(s.cacheTrace) > 0 {
+		if body, err := json.Marshal(s.cacheTrace); err == nil {
+			monitor.Post(body, tracePath)
+		}
+	}
+	// send log
+	if len(s.cacheLog) > 0 {
+		if body, err := json.Marshal(s.cacheLog); err == nil {
+			monitor.Post(body, logPath)
+		}
+	}
 }
