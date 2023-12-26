@@ -87,6 +87,23 @@ const (
 	GPU_MEMORY_SIZE         = "GPU_MEMORY_SIZE"
 	COLD_START_CONCURRENCY  = "COLD_START_CONCURRENCY"
 	MODEL_COLD_START_SERIAL = "MODEL_COLD_START_SERIAL"
+	LOG_REMOTE_SERVICE      = "LOG_REMOTE_SERVICE"
+	FC_ACCOUNT_ID           = "FC_ACCOUNT_ID"
+	FC_FUNCTION_NAME        = "FC_FUNCTION_NAME"
+	ENABLE_COLLECT          = "ENABLE_COLLECT"
+	DISABLE_HF_CHECK        = "DISABLE_HF_CHECK"
+)
+
+// default value
+const (
+	DefaultSdUrlPrefix   = "http://localhost"
+	DefaultExtraArgs     = "--api"
+	DefaultSessionExpire = 3600
+	DefaultLoginSwitch   = "off"       // value: off|on
+	DefaultUseLocalModel = "yes"       // value: yes|no
+	DefaultFlexMode      = "multiFunc" // value: singleFunc|multiFunc
+	DefaultOssMode       = "remote"
+	DefaultLogService    = "http://server-ai-backend-agwwspzdwb.cn-hangzhou.devsapp.net"
 )
 
 // function http trigger
@@ -125,4 +142,9 @@ const (
 const (
 	ColdStartConcurrency = 10
 	ModelColdStartSerial = false
+)
+
+const (
+	TrackerKeyStableDiffusionStartup = "stable_diffusion_startup"
+	FcRequestID                      = "x-fc-request-id"
 )

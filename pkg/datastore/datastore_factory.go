@@ -68,6 +68,8 @@ func NewSQLiteConfig(tableName string) *Config {
 			KModelServerImage:           "TEXT",
 			KModelServiceCreateTime:     "TEXT",
 			KModelServiceLastModifyTime: "TEXT",
+			KModelServiceResource:       "TEXT",
+			KModelServiceMessage:        "TEXT",
 		}
 		config.PrimaryKeyColumnName = KModelServiceKey
 	case KUserTableName:
@@ -139,6 +141,8 @@ func NewOtsConfig(tableName string) *Config {
 			KModelServerImage:           "TEXT",
 			KModelServiceCreateTime:     "TEXT",
 			KModelServiceLastModifyTime: "TEXT",
+			KModelServiceResource:       "TEXT",
+			KModelServiceMessage:        "TEXT",
 		}
 		config.PrimaryKeyColumnName = KModelServiceKey
 	case KUserTableName:

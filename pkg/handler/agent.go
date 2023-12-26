@@ -650,15 +650,22 @@ func (a *AgentHandler) Restart(c *gin.Context) {
 	c.String(http.StatusNotFound, "api not support")
 }
 
+// BatchUpdateResource update sd function resource by batch, Supports a specified list of functions, or all
+// (POST /batch_update_sd_resource)
+func (a *AgentHandler) BatchUpdateResource(c *gin.Context) {
+	c.String(http.StatusNotFound, "api not support")
+}
+
 func ReverseProxy(c *gin.Context) {
 	target := config.ConfigGlobal.SdUrlPrefix
 	remote, err := url.Parse(target)
 	if err != nil {
 		panic(err)
 	}
-	//requestId := c.GetHeader("x-fc-request-id")
-	//log.SDLogInstance.AddRequestId(requestId)
-	//defer log.SDLogInstance.DelRequestId(requestId)
+	requestId := c.GetHeader(config.FcRequestID)
+	//requestId := utils.RandStr(10)
+	log.SDLogInstance.AddRequestId(requestId)
+	defer log.SDLogInstance.DelRequestId(requestId)
 	proxy := httputil.NewSingleHostReverseProxy(remote)
 	proxy.Director = func(req *http.Request) {
 		req.Header = c.Request.Header

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
+	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/models"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/module"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
@@ -214,7 +215,6 @@ func parseMap(aMap map[string]interface{}, taskId, user string, idx *int) map[st
 					*idx += 1
 					aMap[key] = ossPath
 				}
-
 			}
 		}
 	}
@@ -249,4 +249,95 @@ func parseArray(anArray []interface{}, taskId, user string, idx *int) []interfac
 		}
 	}
 	return anArray
+}
+
+func getFunctionDatas(store datastore.Datastore,
+	request *models.BatchUpdateSdResourceRequest) (map[string]*module.FuncResource, error) {
+	// get function resource
+	Datas := make(map[string]*module.FuncResource)
+	if request.Models == nil || len(*request.Models) == 0 {
+		funcDatas, err := store.ListAll([]string{datastore.KModelServiceKey, datastore.KModelServiceFunctionName,
+			datastore.KModelServiceResource})
+		if err != nil {
+			return nil, err
+		}
+		for _, funcData := range funcDatas {
+			funcDataNew, err := updateFuncResource(request, funcData[datastore.KModelServiceResource].(string))
+			if err != nil {
+				return nil, err
+			}
+			if funcDataNew != nil {
+				Datas[funcData[datastore.KModelServiceKey].(string)] = funcDataNew
+			}
+		}
+	} else {
+		for _, model := range *request.Models {
+			funcData, err := store.Get(model, []string{datastore.KModelServiceResource,
+				datastore.KModelServiceFunctionName})
+			if err != nil {
+				return nil, err
+			}
+			if funcData == nil || len(funcData) == 0 {
+				return nil, errors.New(fmt.Sprintf("model=%s not exist", model))
+			}
+			funcDataNew, err := updateFuncResource(request, funcData[datastore.KModelServiceResource].(string))
+			if err != nil {
+				return nil, err
+			}
+			if funcDataNew != nil {
+				Datas[model] = funcDataNew
+			}
+		}
+	}
+	return Datas, nil
+}
+
+func updateFuncResource(request *models.BatchUpdateSdResourceRequest,
+	resource string) (*module.FuncResource, error) {
+	isDiff := false
+	var res module.FuncResource
+	if err := json.Unmarshal([]byte(resource), &res); err != nil {
+		return nil, err
+	}
+	// update resource
+	// image
+	if request.Image != nil && *request.Image != "" && *request.Image != res.Image {
+		res.Image = *request.Image
+		isDiff = true
+	}
+	// cpu
+	if request.Cpu != nil && *request.Cpu > 0 && *request.Cpu != res.CPU {
+		res.CPU = *request.Cpu
+		isDiff = true
+	}
+	// extraArgs
+	if request.ExtraArgs != nil && *request.ExtraArgs != "" && *request.ExtraArgs != *res.Env["EXTRA_ARGS"] {
+		res.Env["EXTRA_ARGS"] = request.ExtraArgs
+		isDiff = true
+	}
+	// gpuMemorySize
+	if request.GpuMemorySize != nil && *request.GpuMemorySize > 0 && *request.GpuMemorySize != res.GpuMemorySize {
+		res.GpuMemorySize = *request.GpuMemorySize
+		isDiff = true
+	}
+	// MemorySize
+	if request.MemorySize != nil && *request.MemorySize > 0 && *request.MemorySize != res.MemorySize {
+		res.MemorySize = *request.MemorySize
+		isDiff = true
+	}
+	// instanceType
+	if request.InstanceType != nil && *request.InstanceType != "" && *request.InstanceType != res.InstanceType {
+		res.InstanceType = *request.InstanceType
+		isDiff = true
+	}
+	// timeout
+	if request.Timeout != nil && *request.Timeout > 0 && *request.Timeout != res.Timeout {
+		res.Timeout = *request.Timeout
+		isDiff = true
+	}
+	if isDiff {
+		return &res, nil
+	} else {
+		return nil, nil
+	}
 }

@@ -25,6 +25,17 @@ type SdModels struct {
 	endpoint string
 }
 
+// FuncResource Fc resource
+type FuncResource struct {
+	Image         string             `json:"image"`
+	CPU           float32            `json:"cpu"`
+	GpuMemorySize int32              `json:"gpuMemorySize"`
+	InstanceType  string             `json:"InstanceType"`
+	MemorySize    int32              `json:"memorySize"`
+	Timeout       int32              `json:"timeout"`
+	Env           map[string]*string `json:"env"`
+}
+
 var FuncManagerGlobal *FuncManager
 
 // FuncManager manager fc function
@@ -79,6 +90,7 @@ func (f *FuncManager) GetLastInvokeEndpoint(sdModel *string) string {
 // second get from db
 // third create function and return endpoint
 func (f *FuncManager) GetEndpoint(sdModel string) (string, error) {
+	//return "http://localhost:8010", nil
 	key := "default"
 	if config.ConfigGlobal.GetFlexMode() == config.MultiFunc && sdModel != "" {
 		key = sdModel
@@ -131,31 +143,53 @@ func (f *FuncManager) UpdateAllFunctionEnv() error {
 // input modelName and env
 func (f *FuncManager) UpdateFunctionEnv(key, modelName string) error {
 	// check model->function exist
-	if !f.funcExist(key) {
+	res := f.funcExist(key)
+	if res == nil {
 		return nil
 	}
-	env := getEnv(modelName)
-	functionName := getFunctionName(key)
+	res.Env[config.MODEL_REFRESH_SIGNAL] = utils.String(fmt.Sprintf("%d", utils.TimestampS())) // value = now timestamp
+	functionName := GetFunctionName(key)
 	if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
-		new(fc.UpdateFunctionRequest).SetRuntime("custom-container").SetGpuMemorySize(config.ConfigGlobal.GpuMemorySize).
-			SetEnvironmentVariables(env)); err != nil {
+		new(fc.UpdateFunctionRequest).SetRuntime("custom-container").SetGpuMemorySize(res.GpuMemorySize).
+			SetEnvironmentVariables(res.Env)); err != nil {
 		logrus.Info(err.Error())
 		return err
 	}
 	return nil
 }
 
-// UpdateFunctionImage update instance Image
-func (f *FuncManager) UpdateFunctionImage(key string) error {
-	functionName := getFunctionName(key)
-	if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
-		new(fc.UpdateFunctionRequest).SetRuntime("custom-container").SetGpuMemorySize(config.ConfigGlobal.GpuMemorySize).
-			SetCustomContainerConfig(new(fc.CustomContainerConfig).
-				SetImage(config.ConfigGlobal.Image))); err != nil {
-		return err
-	}
+//// UpdateFunctionImage update instance Image
+//func (f *FuncManager) UpdateFunctionImage(key string) error {
+//	functionName := GetFunctionName(key)
+//	if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
+//		new(fc.UpdateFunctionRequest).SetRuntime("custom-container").SetGpuMemorySize(config.ConfigGlobal.GpuMemorySize).
+//			SetCustomContainerConfig(new(fc.CustomContainerConfig).
+//				SetImage(config.ConfigGlobal.Image))); err != nil {
+//		return err
+//	}
+//	return nil
+//}
 
-	return nil
+// UpdateFunctionResource update function resource
+func (f *FuncManager) UpdateFunctionResource(resources map[string]*FuncResource) ([]string, []string, []string) {
+	success := make([]string, 0, len(resources))
+	fail := make([]string, 0, len(resources))
+	errs := make([]string, 0, len(resources))
+	for key, resource := range resources {
+		functionName := GetFunctionName(key)
+		if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
+			new(fc.UpdateFunctionRequest).SetRuntime("custom-container").SetGpuMemorySize(resource.GpuMemorySize).
+				SetMemorySize(resource.MemorySize).SetCpu(resource.CPU).SetInstanceType(resource.InstanceType).
+				SetTimeout(resource.Timeout).SetCustomContainerConfig(new(fc.CustomContainerConfig).
+				SetImage(resource.Image)).SetEnvironmentVariables(resource.Env)); err != nil {
+			fail = append(fail, functionName)
+			errs = append(errs, err.Error())
+
+		} else {
+			success = append(success, key)
+		}
+	}
+	return success, fail, errs
 }
 
 // get endpoint from cache
@@ -181,7 +215,7 @@ func (f *FuncManager) getEndpointFromDb(key string) string {
 }
 
 func (f *FuncManager) createFunc(key, sdModel string, env map[string]*string) string {
-	functionName := getFunctionName(key)
+	functionName := GetFunctionName(key)
 	serviceName := config.ConfigGlobal.ServiceName
 	if endpoint, err := f.createFCFunction(serviceName, functionName, env); err == nil && endpoint != "" {
 		// update cache
@@ -219,19 +253,19 @@ func (f *FuncManager) loadFunc() {
 		datastore.KModelServiceSdModel, datastore.KModelServerImage})
 	for _, data := range funcAll {
 		key := data[datastore.KModelServiceKey].(string)
-		image := data[datastore.KModelServerImage].(string)
-		if image != "" && config.ConfigGlobal.Image != "" &&
-			image != config.ConfigGlobal.Image {
-			// update function image
-			if err := f.UpdateFunctionImage(key); err != nil {
-				logrus.Info("update function image err=", err.Error())
-			}
-			// update db
-			f.funcStore.Update(key, map[string]interface{}{
-				datastore.KModelServerImage: config.ConfigGlobal.Image,
-				datastore.KModelModifyTime:  fmt.Sprintf("%d", utils.TimestampS()),
-			})
-		}
+		//image := data[datastore.KModelServerImage].(string)
+		//if image != "" && config.ConfigGlobal.Image != "" &&
+		//	image != config.ConfigGlobal.Image {
+		//	// update function image
+		//	if err := f.UpdateFunctionImage(key); err != nil {
+		//		logrus.Info("update function image err=", err.Error())
+		//	}
+		//	// update db
+		//	f.funcStore.Update(key, map[string]interface{}{
+		//		datastore.KModelServerImage: config.ConfigGlobal.Image,
+		//		datastore.KModelModifyTime:  fmt.Sprintf("%d", utils.TimestampS()),
+		//	})
+		//}
 		endpoint := data[datastore.KModelServiceEndPoint].(string)
 		// init lastInvokeEndpoint
 		if f.lastInvokeEndpoint == "" {
@@ -243,24 +277,39 @@ func (f *FuncManager) loadFunc() {
 }
 
 // check model->func exist
-func (f *FuncManager) funcExist(key string) bool {
-	if data, err := f.funcStore.Get(key, []string{datastore.KModelServiceEndPoint}); err != nil ||
+func (f *FuncManager) funcExist(key string) *FuncResource {
+	var res FuncResource
+	if data, err := f.funcStore.Get(key, []string{datastore.KModelServiceResource}); err != nil ||
 		data == nil || len(data) == 0 {
-		return false
+		return nil
 	} else {
-		return true
+		resStr := data[datastore.KModelServiceResource].(string)
+		if err := json.Unmarshal([]byte(resStr), &res); err != nil {
+			return nil
+		}
 	}
-	return false
+	return &res
 }
 
 // write func into db
 func (f *FuncManager) putFunc(key, functionName, sdModel, endpoint string) {
+	env := getEnv(sdModel)
+	res := FuncResource{
+		CPU:           config.ConfigGlobal.CPU,
+		GpuMemorySize: config.ConfigGlobal.GpuMemorySize,
+		MemorySize:    config.ConfigGlobal.MemorySize,
+		Timeout:       config.ConfigGlobal.Timeout,
+		InstanceType:  config.ConfigGlobal.InstanceType,
+		Env:           env,
+		Image:         config.ConfigGlobal.Image,
+	}
+	resStr, _ := json.Marshal(res)
 	f.funcStore.Put(key, map[string]interface{}{
 		datastore.KModelServiceKey:            key,
 		datastore.KModelServiceSdModel:        sdModel,
 		datastore.KModelServiceFunctionName:   functionName,
 		datastore.KModelServiceEndPoint:       endpoint,
-		datastore.KModelServerImage:           config.ConfigGlobal.Image,
+		datastore.KModelServiceResource:       string(resStr),
 		datastore.KModelServiceCreateTime:     fmt.Sprintf("%d", utils.TimestampS()),
 		datastore.KModelServiceLastModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
 	})
@@ -323,8 +372,8 @@ func getHttpTrigger() *fc.CreateTriggerRequest {
 	}
 }
 
-// hash key, avoid generating invalid characters
-func getFunctionName(key string) string {
+// GetFunctionName hash key, avoid generating invalid characters
+func GetFunctionName(key string) string {
 	return fmt.Sprintf("sd_%s", utils.Hash(key))
 }
 

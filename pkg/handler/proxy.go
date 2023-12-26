@@ -26,20 +26,22 @@ import (
 const DEFAULT_USER = "default"
 
 type ProxyHandler struct {
-	userStore   datastore.Datastore
-	taskStore   datastore.Datastore
-	modelStore  datastore.Datastore
-	configStore datastore.Datastore
+	userStore     datastore.Datastore
+	taskStore     datastore.Datastore
+	modelStore    datastore.Datastore
+	configStore   datastore.Datastore
+	functionStore datastore.Datastore
 }
 
 func NewProxyHandler(taskStore datastore.Datastore,
 	modelStore datastore.Datastore, userStore datastore.Datastore,
-	configStore datastore.Datastore) *ProxyHandler {
+	configStore datastore.Datastore, functionStore datastore.Datastore) *ProxyHandler {
 	return &ProxyHandler{
-		taskStore:   taskStore,
-		modelStore:  modelStore,
-		userStore:   userStore,
-		configStore: configStore,
+		taskStore:     taskStore,
+		modelStore:    modelStore,
+		userStore:     userStore,
+		configStore:   configStore,
+		functionStore: functionStore,
 	}
 }
 
@@ -98,6 +100,49 @@ func (p *ProxyHandler) Restart(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "success"})
 	} else {
 		c.JSON(http.StatusNotFound, gin.H{"message": "not support"})
+	}
+}
+
+// BatchUpdateResource update sd function resource by batch, Supports a specified list of functions, or all
+// (POST /batch_update_sd_resource)
+func (p *ProxyHandler) BatchUpdateResource(c *gin.Context) {
+	request := new(models.BatchUpdateSdResourceRequest)
+	if err := getBindResult(c, request); err != nil {
+		handleError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	// get request relevant function
+	funcDatas, err := getFunctionDatas(p.functionStore, request)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"status": "fail",
+			"errMsg": err.Error()})
+		return
+	}
+	// update fc
+	success, fail, errs := module.FuncManagerGlobal.UpdateFunctionResource(funcDatas)
+	// update db with success function
+	for _, name := range success {
+		res := funcDatas[name]
+		if str, err := json.Marshal(res); err == nil {
+			if err = p.functionStore.Update(name, map[string]interface{}{
+				datastore.KModelServiceResource:       string(str),
+				datastore.KModelServiceLastModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+			}); err == nil {
+				continue
+			}
+		}
+		fail = append(fail, module.GetFunctionName(name))
+		errs = append(errs, fmt.Sprintf("%s modify fc success, update db error", name))
+	}
+	// response
+	if len(fail) == 0 {
+		c.JSON(http.StatusOK, gin.H{"status": "success"})
+	} else {
+		c.JSON(http.StatusInternalServerError, models.BatchUpdateSdResourceResponse{
+			Status:       utils.String("fail"),
+			FailFuncList: &fail,
+			ErrMsg:       utils.String(strings.Join(errs, "|")),
+		})
 	}
 }
 

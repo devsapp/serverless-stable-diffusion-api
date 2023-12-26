@@ -319,6 +319,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /batch_update_sd_resource:
+    post:
+      summary: update sd function resource by batch, Supports a specified list of functions, or all
+      operationId: BatchUpdateResource
+      requestBody:
+        description: update function resource
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchUpdateSdResourceRequest'
+      responses:
+        "200":
+          description: update success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchUpdateSdResourceResponse"
+        "500":
+          description: update function partial failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchUpdateSdResourceResponse"
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
 components:
   schemas:
@@ -899,6 +929,53 @@ components:
         image:
           type: string
           example: "base64|imgpath"
+    BatchUpdateSdResourceRequest:
+      properties:
+        models:
+          type: array
+          items:
+            type: string
+          description: sd models list, not set default all
+        image:
+          type: string
+          description: sd image
+        cpu:
+          type: number
+          format: float
+          description: sd function cpu
+        instanceType:
+          type: string
+          description: fc.gpu.tesla.1:T4, fc.gpu.ampere.1:A10
+        memorySize:
+          type: integer
+          format: int32
+          description:  instance mem size (MB)
+        gpuMemorySize:
+          type: integer
+          format: int32
+          description: GPU Video RAM
+        timeout:
+          type: integer
+          format: int32
+          description: fucntion timeout
+        extraArgs:
+          type: string
+          description: sd start args
+          example: "--api"
+    BatchUpdateSdResourceResponse:
+      properties:
+        status:
+          type: string
+          description: update status val(success\fail)
+          example: "success"
+        failFuncList:
+          type: array
+          items:
+            type: string
+          description: fail function list
+        errMsg:
+          type: string
+          description: fail message
     Error:
       required:
         - code

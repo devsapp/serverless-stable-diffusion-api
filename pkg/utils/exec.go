@@ -18,7 +18,7 @@ type ExecItem struct {
 	Stdout io.ReadCloser
 }
 
-func DoExec(shell, dir string) *ExecItem {
+func DoExec(shell, dir string, env []string) *ExecItem {
 	execItem := &ExecItem{
 		Status: 0,
 	}
@@ -27,6 +27,9 @@ func DoExec(shell, dir string) *ExecItem {
 	defer stdout.Close()
 	if dir != "" {
 		cmd.Dir = dir
+	}
+	if env != nil {
+		cmd.Env = env
 	}
 	if err := cmd.Start(); err != nil {
 		fmt.Println("cmd.Start err: ", err.Error())
@@ -44,7 +47,7 @@ func DoExec(shell, dir string) *ExecItem {
 	return execItem
 }
 
-func DoExecAsync(shell, dir string) (*ExecItem, error) {
+func DoExecAsync(shell, dir string, env []string) (*ExecItem, error) {
 	execItem := &ExecItem{
 		Status: 0,
 	}
@@ -52,6 +55,9 @@ func DoExecAsync(shell, dir string) (*ExecItem, error) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	stdout, _ := cmd.StdoutPipe()
 	cmd.Stderr = cmd.Stdout
+	if env != nil {
+		cmd.Env = env
+	}
 	//cmd.Stderr = os.Stderr
 	//cmd.Stdout = os.Stdout
 	if dir != "" {

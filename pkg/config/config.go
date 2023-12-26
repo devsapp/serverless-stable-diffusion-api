@@ -58,7 +58,10 @@ type ConfigYaml struct {
 	FlexMode string `yaml:"flexMode"`
 
 	// agent expose to user or not
-	Expose string `yaml:"exposeToUser"`
+	Expose             string `yaml:"exposeToUser"`
+	LogRemoteService   string `yaml:"logRemoteService"`
+	EnableCollect      string `yaml:"enableCollect"`
+	DisableHealthCheck string `yaml:"disableHealthCheck"`
 
 	// proxy or control or agent
 	ServerName string `yaml:"serverName"`
@@ -80,6 +83,10 @@ type ConfigEnv struct {
 type Config struct {
 	ConfigYaml
 	ConfigEnv
+}
+
+func (c *Config) SendLogToRemote() bool {
+	return c.LogRemoteService != "" && (c.EnableCollect == "true" || c.EnableCollect == "1")
 }
 
 // IsServerTypeMatch Identify whether serverName == name
@@ -119,6 +126,10 @@ func (c *Config) GetSDPort() string {
 
 func (c *Config) EnableProgressImg() bool {
 	return c.ProgressImageOutputSwitch == "on"
+}
+
+func (c *Config) GetDisableHealthCheck() bool {
+	return c.DisableHealthCheck == "true" || c.DisableHealthCheck == "1"
 }
 
 func (c *Config) updateFromEnv() {
@@ -203,6 +214,53 @@ func (c *Config) updateFromEnv() {
 			c.ModelColdStartSerial = serial
 		}
 	}
+
+	// sd agent
+	logRemoteService := os.Getenv(LOG_REMOTE_SERVICE)
+	if logRemoteService != "" {
+		c.LogRemoteService = logRemoteService
+	}
+
+	enableCollect := os.Getenv(ENABLE_COLLECT)
+	if enableCollect != "" {
+		c.EnableCollect = enableCollect
+	}
+
+	disableHealthCheck := os.Getenv(DISABLE_HF_CHECK)
+	if disableHealthCheck != "" {
+		c.DisableHealthCheck = disableHealthCheck
+	}
+}
+
+// set default
+func (c *Config) setDefaults() {
+	if c.OtsTimeToAlive == 0 {
+		c.OtsTimeToAlive = -1
+	}
+	if c.ListenInterval == 0 {
+		c.ListenInterval = 1
+	}
+	if c.SessionExpire == 0 {
+		c.SessionExpire = DefaultSessionExpire
+	}
+	if c.ExtraArgs == "" {
+		c.ExtraArgs = DefaultExtraArgs
+	}
+	if c.LoginSwitch == "" {
+		c.LoginSwitch = DefaultLoginSwitch
+	}
+	if c.UseLocalModels == "" {
+		c.UseLocalModels = DefaultUseLocalModel
+	}
+	if c.FlexMode == "" {
+		c.FlexMode = DefaultFlexMode
+	}
+	if c.OssMode == "" {
+		c.OssMode = DefaultOssMode
+	}
+	if c.LogRemoteService == "" {
+		c.LogRemoteService = DefaultLogService
+	}
 }
 
 func InitConfig(fn string) error {
@@ -234,6 +292,9 @@ func InitConfig(fn string) error {
 		*configYaml,
 		*configEnv,
 	}
+	// set default
+	ConfigGlobal.setDefaults()
+
 	// env cover yaml
 	ConfigGlobal.updateFromEnv()
 	if ConfigGlobal.GetFlexMode() == MultiFunc && ConfigGlobal.ServerName == PROXY && ConfigGlobal.Downstream == "" {

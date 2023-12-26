@@ -44,9 +44,36 @@ func NewSDManager(port string) *SDManager {
 	return sd
 }
 
+func (s *SDManager) getEnv() []string {
+	env := make([]string, 0)
+	fileMgrToken := ""
+	fileMgrEndpoint := ""
+	fileMgrName := "admin"
+	if adminEnv := FuncManagerGlobal.GetFcFuncEnv(fileMgrName); adminEnv != nil {
+		if token := (*adminEnv)["TOKEN"]; token != nil {
+			fileMgrToken = *token
+		}
+		fileMgrEndpoint = fmt.Sprintf("http://%s.%s.%s.%s.fc.devsapp.net", fileMgrName,
+			config.ConfigGlobal.ServiceName, config.ConfigGlobal.AccountId, config.ConfigGlobal.Region)
+	}
+	env = append(env,
+		fmt.Sprintf("SERVERLESS_SD_FILEMGR_TOKEN=%s", fileMgrToken),
+		fmt.Sprintf("SERVERLESS_SD_FILEMGR_DOMAIN=%s", fileMgrEndpoint))
+
+	// not set DISABLE_HF_CHECK, default proxy enable
+	if !config.ConfigGlobal.GetDisableHealthCheck() {
+		env = append(env,
+			"HTTP_PROXY=http://127.0.0.1:1080",
+			"HTTPS_PROXY=http://127.0.0.1:1080",
+		)
+	}
+	return env
+}
+
 func (s *SDManager) init() error {
+	sdStartTs := utils.TimestampMS()
 	// start sd
-	execItem, err := utils.DoExecAsync(config.ConfigGlobal.SdShell, config.ConfigGlobal.SdPath)
+	execItem, err := utils.DoExecAsync(config.ConfigGlobal.SdShell, config.ConfigGlobal.SdPath, s.getEnv())
 	if err != nil {
 		return err
 	}
@@ -73,6 +100,9 @@ func (s *SDManager) init() error {
 	s.flag = true
 	// start detect
 	go s.detectAlive()
+	sdEndTs := utils.TimestampMS()
+	log.SDLogInstance.TraceFlow <- []string{config.TrackerKeyStableDiffusionStartup,
+		fmt.Sprintf("sd start cost=%d", sdEndTs-sdStartTs)}
 	return nil
 }
 
@@ -143,7 +173,7 @@ func UpdateSdConfig(configStore datastore.Datastore) error {
 }
 
 func checkSdExist(pid string) bool {
-	execItem := utils.DoExec("ps -ef|grep webui|grep -v agent|grep -v grep|awk '{print $2}'", "")
+	execItem := utils.DoExec("ps -ef|grep webui|grep -v agent|grep -v grep|awk '{print $2}'", "", nil)
 	if strings.Trim(execItem.Output, "\n") == pid {
 		return true
 	}
