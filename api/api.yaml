@@ -349,6 +349,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /list/sdapi/functions:
+    get:
+      summary: get sdapi function
+      operationId: listSdFunc
+      responses:
+        "200":
+          description: sd list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListSDFunctionResponse"
+        "500":
+          description: sd list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListSDFunctionResponse"
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
 components:
   schemas:
@@ -973,6 +996,20 @@ components:
           items:
             type: string
           description: fail function list
+        errMsg:
+          type: string
+          description: fail message
+    ListSDFunctionResponse:
+      properties:
+        status:
+          type: string
+          description: success|fail
+          example: "success"
+        functions:
+          type: array
+          items:
+            type: object
+          description: dynamically creating functions
         errMsg:
           type: string
           description: fail message

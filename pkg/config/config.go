@@ -58,7 +58,6 @@ type ConfigYaml struct {
 	FlexMode string `yaml:"flexMode"`
 
 	// agent expose to user or not
-	Expose             string `yaml:"exposeToUser"`
 	LogRemoteService   string `yaml:"logRemoteService"`
 	EnableCollect      string `yaml:"enableCollect"`
 	DisableHealthCheck string `yaml:"disableHealthCheck"`
@@ -98,7 +97,7 @@ func (c *Config) IsServerTypeMatch(name string) bool {
 }
 
 func (c *Config) ExposeToUser() bool {
-	return c.Expose == "yes"
+	return os.Getenv(MODEL_SD) != ""
 }
 
 // GetFlexMode flex mode
@@ -182,12 +181,6 @@ func (c *Config) updateFromEnv() {
 	flexMode := os.Getenv(FLEX_MODE)
 	if flexMode != "" {
 		c.FlexMode = flexMode
-	}
-
-	// agent expose to user
-	exposeToUser := os.Getenv(EXPOSE_TO_USER)
-	if exposeToUser != "" {
-		c.Expose = exposeToUser
 	}
 
 	// proxy

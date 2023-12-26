@@ -103,6 +103,31 @@ func (p *ProxyHandler) Restart(c *gin.Context) {
 	}
 }
 
+// ListSdFunc get sdapi function
+// (GET /list/sdapi/functions)
+func (p *ProxyHandler) ListSdFunc(c *gin.Context) {
+	if datas, err := p.functionStore.ListAll([]string{datastore.KModelServiceFunctionName}); err != nil {
+		c.JSON(http.StatusInternalServerError, models.ListSDFunctionResponse{
+			Status: utils.String("fail"),
+			ErrMsg: utils.String(err.Error()),
+		})
+	} else {
+		funcList := make([]map[string]interface{}, 0, len(datas))
+		if datas != nil {
+			for model, data := range datas {
+				funcList = append(funcList, map[string]interface{}{
+					"functionName": data[datastore.KModelServiceFunctionName].(string),
+					"model":        model,
+				})
+			}
+		}
+		c.JSON(http.StatusOK, models.ListSDFunctionResponse{
+			Status:    utils.String("success"),
+			Functions: &funcList,
+		})
+	}
+}
+
 // BatchUpdateResource update sd function resource by batch, Supports a specified list of functions, or all
 // (POST /batch_update_sd_resource)
 func (p *ProxyHandler) BatchUpdateResource(c *gin.Context) {

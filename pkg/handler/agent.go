@@ -656,6 +656,12 @@ func (a *AgentHandler) BatchUpdateResource(c *gin.Context) {
 	c.String(http.StatusNotFound, "api not support")
 }
 
+// ListSdFunc get sdapi function
+// (GET /list/sdapi/functions)
+func (a *AgentHandler) ListSdFunc(c *gin.Context) {
+	c.String(http.StatusNotFound, "api not support")
+}
+
 func ReverseProxy(c *gin.Context) {
 	target := config.ConfigGlobal.SdUrlPrefix
 	remote, err := url.Parse(target)
