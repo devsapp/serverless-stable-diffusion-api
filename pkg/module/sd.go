@@ -110,7 +110,6 @@ func (s *SDManager) init() error {
 }
 
 func (s *SDManager) WaitPortWork() {
-	logrus.Info(s)
 	// sd not exist, restart
 	if !checkSdExist(strconv.Itoa(s.pid)) && !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) {
 		logrus.Info("restart process....")

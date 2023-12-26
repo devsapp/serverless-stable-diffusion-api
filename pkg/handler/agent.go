@@ -674,11 +674,16 @@ func ReverseProxy(c *gin.Context) {
 	log.SDLogInstance.AddRequestId(requestId)
 	defer log.SDLogInstance.DelRequestId(requestId)
 	proxy := httputil.NewSingleHostReverseProxy(remote)
+	originalDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {
 		req.Header = c.Request.Header
 		req.Host = remote.Host
 		req.URL.Scheme = remote.Scheme
 		req.URL.Host = remote.Host
+		if strings.HasPrefix(req.URL.Path, "/internal/ping") {
+			time.Sleep(2 * time.Second)
+		}
+		originalDirector(req)
 	}
 	proxy.ErrorHandler = func(resp http.ResponseWriter, req *http.Request, e error) {
 		if err, ok := e.(*net.OpError); ok && err.Op == "dial" {
