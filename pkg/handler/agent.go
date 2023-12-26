@@ -16,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -678,6 +679,14 @@ func ReverseProxy(c *gin.Context) {
 		req.Host = remote.Host
 		req.URL.Scheme = remote.Scheme
 		req.URL.Host = remote.Host
+	}
+	proxy.ErrorHandler = func(resp http.ResponseWriter, req *http.Request, e error) {
+		if err, ok := e.(*net.OpError); ok && err.Op == "dial" {
+			// catch "connection refused"
+			logrus.Infof("Connection to %s refused: %v\n", target, err)
+			module.SDManageObj.WaitPortWork()
+			resp.WriteHeader(http.StatusServiceUnavailable)
+		}
 	}
 	proxy.ModifyResponse = func(resp *http.Response) error {
 		resp.Header.Del("Access-Control-Allow-Origin")

@@ -26,6 +26,8 @@ const (
 	SD_DETECT_RETEY   = 4             // detect 4 fail
 )
 
+var SDManageObj *SDManager
+
 type SDManager struct {
 	pid     int
 	port    string
@@ -35,13 +37,13 @@ type SDManager struct {
 }
 
 func NewSDManager(port string) *SDManager {
-	sd := new(SDManager)
-	sd.port = port
-	sd.endChan = make(chan struct{}, 1)
-	if err := sd.init(); err != nil {
+	SDManageObj = new(SDManager)
+	SDManageObj.port = port
+	SDManageObj.endChan = make(chan struct{}, 1)
+	if err := SDManageObj.init(); err != nil {
 		logrus.Error(err.Error())
 	}
-	return sd
+	return SDManageObj
 }
 
 func (s *SDManager) getEnv() []string {
@@ -99,12 +101,25 @@ func (s *SDManager) init() error {
 		return errors.New("sd not start after 2min")
 	}
 	s.flag = true
-	// start detect
-	go s.detectAlive()
+	//// start detect
+	//go s.detectAlive()
 	sdEndTs := utils.TimestampMS()
 	log.SDLogInstance.TraceFlow <- []string{config.TrackerKeyStableDiffusionStartup,
 		fmt.Sprintf("sd start cost=%d", sdEndTs-sdStartTs)}
 	return nil
+}
+
+func (s *SDManager) WaitPortWork() {
+	logrus.Info(s)
+	// sd not exist, restart
+	if !checkSdExist(strconv.Itoa(s.pid)) && !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) {
+		logrus.Info("restart process....")
+		s.init()
+	} else {
+		// detect 5s
+		utils.PortCheck(s.port, 5*SD_DETECT_TIMEOUT)
+		logrus.Info("restart port ....")
+	}
 }
 
 func (s *SDManager) detectAlive() {
