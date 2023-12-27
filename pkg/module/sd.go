@@ -103,7 +103,6 @@ func (s *SDManager) init() error {
 				log.SDLogInstance.LogFlow <- logStr
 			}
 		}
-
 	}()
 	s.pid = execItem.Pid
 	s.stdout = execItem.Stdout
@@ -137,7 +136,8 @@ func (s *SDManager) waitModelLoaded(timeout int) {
 func (s *SDManager) detectSdAlive() {
 	// SD_DETECT_TIMEOUT ms
 	for {
-		s.KillAgentWithoutSd()
+		//s.KillAgentWithoutSd()
+		s.WaitPortWork()
 		time.Sleep(time.Duration(SD_DETECT_TIMEOUT) * time.Millisecond)
 	}
 }
@@ -148,13 +148,13 @@ func (s *SDManager) KillAgentWithoutSd() {
 	}
 }
 
-//func (s *SDManager) WaitPortWork() {
-//	// sd not exist, kill
-//	if !checkSdExist(strconv.Itoa(s.pid)) && !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) {
-//		logrus.Info("restart process....")
-//		s.init()
-//	}
-//}
+func (s *SDManager) WaitPortWork() {
+	// sd not exist, kill
+	if !checkSdExist(strconv.Itoa(s.pid)) && !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) {
+		logrus.Info("restart process....")
+		s.init()
+	}
+}
 
 func (s *SDManager) Close() {
 	syscall.Kill(-s.pid, syscall.SIGKILL)
