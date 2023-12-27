@@ -22,7 +22,7 @@ import (
 const (
 	SD_CONFIG         = "config.json"
 	SD_START_TIMEOUT  = 2 * 60 * 1000 // 2min
-	SD_DETECT_TIMEOUT = 1000          // 1s
+	SD_DETECT_TIMEOUT = 500           // 500ms
 	SD_DETECT_RETEY   = 4             // detect 4 fail
 )
 
@@ -32,6 +32,7 @@ type SDManager struct {
 	pid             int
 	port            string
 	modelLoadedFlag bool
+	restartFlag     bool
 	stdout          io.ReadCloser
 	endChan         chan struct{}
 }
@@ -114,6 +115,7 @@ func (s *SDManager) init() error {
 		// if api mode need blocking model loaded
 		s.waitModelLoaded(SD_START_TIMEOUT)
 	}
+	go s.detectSdAlive()
 	return nil
 }
 
@@ -132,6 +134,14 @@ func (s *SDManager) waitModelLoaded(timeout int) {
 	}
 }
 
+func (s *SDManager) detectSdAlive() {
+	// SD_DETECT_TIMEOUT ms
+	for {
+		s.KillAgentWithoutSd()
+		time.Sleep(time.Duration(SD_DETECT_TIMEOUT) * time.Millisecond)
+	}
+}
+
 func (s *SDManager) KillAgentWithoutSd() {
 	if !checkSdExist(strconv.Itoa(s.pid)) && !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) {
 		syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
@@ -141,15 +151,9 @@ func (s *SDManager) KillAgentWithoutSd() {
 //func (s *SDManager) WaitPortWork() {
 //	// sd not exist, kill
 //	if !checkSdExist(strconv.Itoa(s.pid)) && !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) {
-//		syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+//		logrus.Info("restart process....")
+//		s.init()
 //	}
-//	//logrus.Info("restart process....")
-//	//s.init()
-//	//} else {
-//	//	// detect 5s
-//	//	utils.PortCheck(s.port, 5*SD_DETECT_TIMEOUT)
-//	//	logrus.Info("restart port ....")
-//	//}
 //}
 
 func (s *SDManager) Close() {

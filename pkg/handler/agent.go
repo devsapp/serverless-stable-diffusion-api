@@ -16,7 +16,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -685,13 +684,14 @@ func ReverseProxy(c *gin.Context) {
 		}
 		originalDirector(req)
 	}
-	proxy.ErrorHandler = func(resp http.ResponseWriter, req *http.Request, e error) {
-		if err, ok := e.(*net.OpError); ok && err.Op == "dial" {
-			// catch "connection refused"
-			module.SDManageObj.KillAgentWithoutSd()
-			resp.WriteHeader(http.StatusServiceUnavailable)
-		}
-	}
+
+	//proxy.ErrorHandler = func(resp http.ResponseWriter, req *http.Request, e error) {
+	//	if err, ok := e.(*net.OpError); ok && err.Op == "dial" {
+	//		// catch "connection refused"
+	//		module.SDManageObj.WaitPortWork()
+	//		resp.WriteHeader(http.StatusServiceUnavailable)
+	//	}
+	//}
 	proxy.ModifyResponse = func(resp *http.Response) error {
 		resp.Header.Del("Access-Control-Allow-Origin")
 		resp.Header.Del("Access-Control-Expose-Headers")
