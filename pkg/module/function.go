@@ -53,7 +53,8 @@ type FuncManager struct {
 }
 
 func isFc3() bool {
-	return config.ConfigGlobal.ServerName == ""
+	logrus.Info(config.ConfigGlobal.ServiceName, config.ConfigGlobal.ServiceName == "")
+	return config.ConfigGlobal.ServiceName == ""
 }
 
 func InitFuncManager(funcStore datastore.Datastore) error {
@@ -423,7 +424,10 @@ func getHttpTrigger() *fc.CreateTriggerRequest {
 // --------------fc3.0--------------
 func (f *FuncManager) createFc3Function(functionName string,
 	env map[string]*string) (endpoint string, err error) {
-	createRequest := getCreateFuncRequestFc3(functionName, env)
+	createRequest := f.getCreateFuncRequestFc3(functionName, env)
+	if createRequest == nil {
+		return "", errors.New("get createFunctionRequest error")
+	}
 	// create function
 	if _, err := f.fc3Client.CreateFunction(createRequest); err != nil {
 		return "", err
@@ -438,7 +442,13 @@ func (f *FuncManager) createFc3Function(functionName string,
 }
 
 // fc3.0 get create function request
-func getCreateFuncRequestFc3(functionName string, env map[string]*string) *fc3.CreateFunctionRequest {
+func (f *FuncManager) getCreateFuncRequestFc3(functionName string, env map[string]*string) *fc3.CreateFunctionRequest {
+	// get current function
+	function := f.GetFcFunc(config.ConfigGlobal.ServerName)
+	if function == nil {
+		return nil
+	}
+	curFunction := function.(*fc3.GetFunctionResponse)
 	input := &fc3.CreateFunctionInput{
 		FunctionName:         utils.String(functionName),
 		Cpu:                  utils.Float32(config.ConfigGlobal.CPU),
@@ -448,6 +458,7 @@ func getCreateFuncRequestFc3(functionName string, env map[string]*string) *fc3.C
 		MemorySize:           utils.Int32(config.ConfigGlobal.MemorySize),
 		DiskSize:             utils.Int32(config.ConfigGlobal.DiskSize),
 		EnvironmentVariables: env,
+		Handler:              utils.String("index.handler"),
 		CustomContainerConfig: &fc3.CustomContainerConfig{
 			AccelerationType: utils.String("Default"),
 			Image:            utils.String(config.ConfigGlobal.Image),
@@ -457,6 +468,10 @@ func getCreateFuncRequestFc3(functionName string, env map[string]*string) *fc3.C
 			GpuMemorySize: utils.Int32(config.ConfigGlobal.GpuMemorySize),
 			GpuType:       utils.String(config.ConfigGlobal.InstanceType),
 		},
+		Role:           curFunction.Body.Role,
+		VpcConfig:      curFunction.Body.VpcConfig,
+		NasConfig:      curFunction.Body.NasConfig,
+		OssMountConfig: curFunction.Body.OssMountConfig,
 	}
 	return &fc3.CreateFunctionRequest{
 		Request: input,
