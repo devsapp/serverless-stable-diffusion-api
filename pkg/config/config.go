@@ -275,10 +275,10 @@ func InitConfig(fn string) error {
 	configEnv.ServiceName = os.Getenv(SERVICE_NAME)
 	// check valid
 	for _, val := range []string{configEnv.AccountId, configEnv.AccessKeyId,
-		configEnv.AccessKeySecret, configEnv.Region, configEnv.ServiceName} {
+		configEnv.AccessKeySecret, configEnv.Region} {
 		if val == "" {
 			return errors.New("env not set ACCOUNT_ID || ACCESS_KEY_Id || " +
-				"ACCESS_KEY_SECRET || REGION || SERVICE_NAME, please check")
+				"ACCESS_KEY_SECRET || REGION, please check")
 		}
 	}
 	ConfigGlobal = &Config{

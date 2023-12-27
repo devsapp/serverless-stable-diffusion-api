@@ -681,15 +681,14 @@ func ReverseProxy(c *gin.Context) {
 		req.URL.Scheme = remote.Scheme
 		req.URL.Host = remote.Host
 		if strings.HasPrefix(req.URL.Path, "/internal/ping") {
-			time.Sleep(2 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 		originalDirector(req)
 	}
 	proxy.ErrorHandler = func(resp http.ResponseWriter, req *http.Request, e error) {
 		if err, ok := e.(*net.OpError); ok && err.Op == "dial" {
 			// catch "connection refused"
-			logrus.Infof("Connection to %s refused: %v\n", target, err)
-			module.SDManageObj.WaitPortWork()
+			module.SDManageObj.KillAgentWithoutSd()
 			resp.WriteHeader(http.StatusServiceUnavailable)
 		}
 	}

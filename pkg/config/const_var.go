@@ -92,6 +92,7 @@ const (
 	FC_FUNCTION_NAME        = "FC_FUNCTION_NAME"
 	ENABLE_COLLECT          = "ENABLE_COLLECT"
 	DISABLE_HF_CHECK        = "DISABLE_HF_CHECK"
+	CHECK_MODEL_LOAD        = "CHECK_MODEL_LOAD"
 )
 
 // default value

@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.0.4
+	github.com/alibabacloud-go/fc-20230330 v1.0.0
 	github.com/alibabacloud-go/fc-open-20210406/v2 v2.0.9
 	github.com/alibabacloud-go/tea-utils/v2 v2.0.4
 	github.com/aliyun/aliyun-oss-go-sdk v2.2.6+incompatible

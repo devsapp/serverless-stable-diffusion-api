@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+	fc3 "github.com/alibabacloud-go/fc-20230330/client"
 	fc "github.com/alibabacloud-go/fc-open-20210406/v2/client"
 	fcService "github.com/alibabacloud-go/tea-utils/v2/service"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
@@ -46,25 +47,36 @@ type FuncManager struct {
 	//modelToInfo map[string][]*SdModels
 	funcStore          datastore.Datastore
 	fcClient           *fc.Client
+	fc3Client          *fc3.Client
 	lock               sync.RWMutex
 	lastInvokeEndpoint string
+}
+
+func isFc3() bool {
+	return config.ConfigGlobal.ServerName == ""
 }
 
 func InitFuncManager(funcStore datastore.Datastore) error {
 	// init fc client
 	fcEndpoint := fmt.Sprintf("%s.%s.fc.aliyuncs.com", config.ConfigGlobal.AccountId,
 		config.ConfigGlobal.Region)
-	fcClient, err := fc.NewClient(new(openapi.Config).SetAccessKeyId(config.ConfigGlobal.AccessKeyId).
-		SetAccessKeySecret(config.ConfigGlobal.AccessKeySecret).SetSecurityToken(config.ConfigGlobal.AccessKeyToken).
-		SetProtocol("HTTP").SetEndpoint(fcEndpoint))
-	if err != nil {
-		return err
-	}
 	FuncManagerGlobal = &FuncManager{
 		endpoints: make(map[string][]string),
 		funcStore: funcStore,
-		fcClient:  fcClient,
-		//modelToInfo: make(map[string][]*SdModels),
+	}
+	var err error
+	if isFc3() {
+		FuncManagerGlobal.fc3Client, err = fc3.NewClient(new(openapi.Config).SetAccessKeyId(config.ConfigGlobal.AccessKeyId).
+			SetAccessKeySecret(config.ConfigGlobal.AccessKeySecret).SetSecurityToken(config.ConfigGlobal.AccessKeyToken).
+			SetProtocol("HTTP").SetEndpoint(fcEndpoint))
+	} else {
+		FuncManagerGlobal.fcClient, err = fc.NewClient(new(openapi.Config).SetAccessKeyId(config.ConfigGlobal.AccessKeyId).
+			SetAccessKeySecret(config.ConfigGlobal.AccessKeySecret).SetSecurityToken(config.ConfigGlobal.AccessKeyToken).
+			SetProtocol("HTTP").SetEndpoint(fcEndpoint))
+	}
+
+	if err != nil {
+		return err
 	}
 	// load func endpoint to cache
 	FuncManagerGlobal.loadFunc()
@@ -131,8 +143,8 @@ func (f *FuncManager) UpdateAllFunctionEnv() error {
 	f.loadFunc()
 	f.lock.Unlock()
 	// update all function env
-	for key, item := range f.endpoints {
-		if err := f.UpdateFunctionEnv(key, item[1]); err != nil {
+	for key, _ := range f.endpoints {
+		if err := f.UpdateFunctionEnv(key); err != nil {
 			return err
 		}
 	}
@@ -141,7 +153,7 @@ func (f *FuncManager) UpdateAllFunctionEnv() error {
 
 // UpdateFunctionEnv update instance env
 // input modelName and env
-func (f *FuncManager) UpdateFunctionEnv(key, modelName string) error {
+func (f *FuncManager) UpdateFunctionEnv(key string) error {
 	// check model->function exist
 	res := f.funcExist(key)
 	if res == nil {
@@ -149,26 +161,25 @@ func (f *FuncManager) UpdateFunctionEnv(key, modelName string) error {
 	}
 	res.Env[config.MODEL_REFRESH_SIGNAL] = utils.String(fmt.Sprintf("%d", utils.TimestampS())) // value = now timestamp
 	functionName := GetFunctionName(key)
-	if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
-		new(fc.UpdateFunctionRequest).SetRuntime("custom-container").SetGpuMemorySize(res.GpuMemorySize).
-			SetEnvironmentVariables(res.Env)); err != nil {
-		logrus.Info(err.Error())
-		return err
+	//compatible fc3.0
+	if isFc3() {
+		if _, err := f.fc3Client.UpdateFunction(&functionName,
+			new(fc3.UpdateFunctionRequest).SetRequest(new(fc3.UpdateFunctionInput).SetRuntime("custom-container").
+				SetEnvironmentVariables(res.Env).SetGpuConfig(new(fc3.GPUConfig).
+				SetGpuMemorySize(res.GpuMemorySize)))); err != nil {
+			logrus.Info(err.Error())
+			return err
+		}
+	} else {
+		if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
+			new(fc.UpdateFunctionRequest).SetRuntime("custom-container").SetGpuMemorySize(res.GpuMemorySize).
+				SetEnvironmentVariables(res.Env)); err != nil {
+			logrus.Info(err.Error())
+			return err
+		}
 	}
 	return nil
 }
-
-//// UpdateFunctionImage update instance Image
-//func (f *FuncManager) UpdateFunctionImage(key string) error {
-//	functionName := GetFunctionName(key)
-//	if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
-//		new(fc.UpdateFunctionRequest).SetRuntime("custom-container").SetGpuMemorySize(config.ConfigGlobal.GpuMemorySize).
-//			SetCustomContainerConfig(new(fc.CustomContainerConfig).
-//				SetImage(config.ConfigGlobal.Image))); err != nil {
-//		return err
-//	}
-//	return nil
-//}
 
 // UpdateFunctionResource update function resource
 func (f *FuncManager) UpdateFunctionResource(resources map[string]*FuncResource) ([]string, []string, []string) {
@@ -177,16 +188,31 @@ func (f *FuncManager) UpdateFunctionResource(resources map[string]*FuncResource)
 	errs := make([]string, 0, len(resources))
 	for key, resource := range resources {
 		functionName := GetFunctionName(key)
-		if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
-			new(fc.UpdateFunctionRequest).SetRuntime("custom-container").SetGpuMemorySize(resource.GpuMemorySize).
-				SetMemorySize(resource.MemorySize).SetCpu(resource.CPU).SetInstanceType(resource.InstanceType).
-				SetTimeout(resource.Timeout).SetCustomContainerConfig(new(fc.CustomContainerConfig).
-				SetImage(resource.Image)).SetEnvironmentVariables(resource.Env)); err != nil {
-			fail = append(fail, functionName)
-			errs = append(errs, err.Error())
+		if isFc3() {
+			if _, err := f.fc3Client.UpdateFunction(&functionName,
+				new(fc3.UpdateFunctionRequest).SetRequest(new(fc3.UpdateFunctionInput).SetRuntime("custom-container").
+					SetMemorySize(resource.MemorySize).SetCpu(resource.CPU).SetGpuConfig(new(fc3.GPUConfig).
+					SetGpuType(resource.InstanceType).SetGpuMemorySize(resource.GpuMemorySize)).
+					SetTimeout(resource.Timeout).SetCustomContainerConfig(new(fc3.CustomContainerConfig).
+					SetImage(resource.Image)).SetEnvironmentVariables(resource.Env))); err != nil {
+				fail = append(fail, functionName)
+				errs = append(errs, err.Error())
 
+			} else {
+				success = append(success, key)
+			}
 		} else {
-			success = append(success, key)
+			if _, err := f.fcClient.UpdateFunction(&config.ConfigGlobal.ServiceName, &functionName,
+				new(fc.UpdateFunctionRequest).SetRuntime("custom-container").SetGpuMemorySize(resource.GpuMemorySize).
+					SetMemorySize(resource.MemorySize).SetCpu(resource.CPU).SetInstanceType(resource.InstanceType).
+					SetTimeout(resource.Timeout).SetCustomContainerConfig(new(fc.CustomContainerConfig).
+					SetImage(resource.Image)).SetEnvironmentVariables(resource.Env)); err != nil {
+				fail = append(fail, functionName)
+				errs = append(errs, err.Error())
+
+			} else {
+				success = append(success, key)
+			}
 		}
 	}
 	return success, fail, errs
@@ -216,8 +242,15 @@ func (f *FuncManager) getEndpointFromDb(key string) string {
 
 func (f *FuncManager) createFunc(key, sdModel string, env map[string]*string) string {
 	functionName := GetFunctionName(key)
-	serviceName := config.ConfigGlobal.ServiceName
-	if endpoint, err := f.createFCFunction(serviceName, functionName, env); err == nil && endpoint != "" {
+	var endpoint string
+	var err error
+	if isFc3() {
+		endpoint, err = f.createFc3Function(functionName, env)
+	} else {
+		serviceName := config.ConfigGlobal.ServiceName
+		endpoint, err = f.createFCFunction(serviceName, functionName, env)
+	}
+	if err == nil && endpoint != "" {
 		// update cache
 		f.endpoints[key] = []string{endpoint, sdModel}
 		// put func to db
@@ -232,16 +265,27 @@ func (f *FuncManager) createFunc(key, sdModel string, env map[string]*string) st
 // GetFcFuncEnv get fc function env info
 func (f *FuncManager) GetFcFuncEnv(functionName string) *map[string]*string {
 	if funcBody := f.GetFcFunc(functionName); funcBody != nil {
-		return &funcBody.Body.EnvironmentVariables
+		switch funcBody.(type) {
+		case *fc.GetFunctionResponse:
+			return &funcBody.(*fc.GetFunctionResponse).Body.EnvironmentVariables
+		case *fc3.GetFunctionResponse:
+			return &funcBody.(*fc3.GetFunctionResponse).Body.EnvironmentVariables
+		}
 	}
 	return nil
 }
 
 // GetFcFunc  get fc function info
-func (f *FuncManager) GetFcFunc(functionName string) *fc.GetFunctionResponse {
-	serviceName := config.ConfigGlobal.ServiceName
-	if resp, err := f.fcClient.GetFunction(&serviceName, &functionName, &fc.GetFunctionRequest{}); err == nil {
-		return resp
+func (f *FuncManager) GetFcFunc(functionName string) interface{} {
+	if isFc3() {
+		if resp, err := f.fc3Client.GetFunction(&functionName, &fc3.GetFunctionRequest{}); err == nil {
+			return resp
+		}
+	} else {
+		serviceName := config.ConfigGlobal.ServiceName
+		if resp, err := f.fcClient.GetFunction(&serviceName, &functionName, &fc.GetFunctionRequest{}); err == nil {
+			return resp
+		}
 	}
 	return nil
 }
@@ -315,6 +359,7 @@ func (f *FuncManager) putFunc(key, functionName, sdModel, endpoint string) {
 	})
 }
 
+// ---------fc2.0----------
 // create fc function
 func (f *FuncManager) createFCFunction(serviceName, functionName string,
 	env map[string]*string) (endpoint string, err error) {
@@ -334,6 +379,7 @@ func (f *FuncManager) createFCFunction(serviceName, functionName string,
 		return "", err
 	}
 	return *(resp.Body.UrlInternet), nil
+
 }
 
 // get create function request
@@ -371,6 +417,69 @@ func getHttpTrigger() *fc.CreateTriggerRequest {
 		TriggerConfig: utils.String(string(byteConfig)),
 	}
 }
+
+// ------------end fc2.0----------
+
+// --------------fc3.0--------------
+func (f *FuncManager) createFc3Function(functionName string,
+	env map[string]*string) (endpoint string, err error) {
+	createRequest := getCreateFuncRequestFc3(functionName, env)
+	// create function
+	if _, err := f.fc3Client.CreateFunction(createRequest); err != nil {
+		return "", err
+	}
+	// create http triggers
+	httpTriggerRequest := getHttpTriggerFc3()
+	resp, err := f.fc3Client.CreateTrigger(&functionName, httpTriggerRequest)
+	if err != nil {
+		return "", err
+	}
+	return *(resp.Body.HttpTrigger.UrlInternet), nil
+}
+
+// fc3.0 get create function request
+func getCreateFuncRequestFc3(functionName string, env map[string]*string) *fc3.CreateFunctionRequest {
+	input := &fc3.CreateFunctionInput{
+		FunctionName:         utils.String(functionName),
+		Cpu:                  utils.Float32(config.ConfigGlobal.CPU),
+		Timeout:              utils.Int32(config.ConfigGlobal.Timeout),
+		Runtime:              utils.String("custom-container"),
+		InstanceConcurrency:  utils.Int32(config.ConfigGlobal.InstanceConcurrency),
+		MemorySize:           utils.Int32(config.ConfigGlobal.MemorySize),
+		DiskSize:             utils.Int32(config.ConfigGlobal.DiskSize),
+		EnvironmentVariables: env,
+		CustomContainerConfig: &fc3.CustomContainerConfig{
+			AccelerationType: utils.String("Default"),
+			Image:            utils.String(config.ConfigGlobal.Image),
+			Port:             utils.Int32(config.ConfigGlobal.CAPort),
+		},
+		GpuConfig: &fc3.GPUConfig{
+			GpuMemorySize: utils.Int32(config.ConfigGlobal.GpuMemorySize),
+			GpuType:       utils.String(config.ConfigGlobal.InstanceType),
+		},
+	}
+	return &fc3.CreateFunctionRequest{
+		Request: input,
+	}
+}
+
+// get trigger request
+func getHttpTriggerFc3() *fc3.CreateTriggerRequest {
+	triggerConfig := make(map[string]interface{})
+	triggerConfig["authType"] = config.AUTH_TYPE
+	triggerConfig["methods"] = []string{config.HTTP_GET, config.HTTP_POST, config.HTTP_PUT}
+	byteConfig, _ := json.Marshal(triggerConfig)
+	input := &fc3.CreateTriggerInput{
+		TriggerName:   utils.String(config.TRIGGER_NAME),
+		TriggerType:   utils.String(config.TRIGGER_TYPE),
+		TriggerConfig: utils.String(string(byteConfig)),
+	}
+	return &fc3.CreateTriggerRequest{
+		Request: input,
+	}
+}
+
+// ----------end fc3-----------
 
 // GetFunctionName hash key, avoid generating invalid characters
 func GetFunctionName(key string) string {

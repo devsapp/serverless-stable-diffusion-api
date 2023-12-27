@@ -375,7 +375,7 @@ func (p *ProxyHandler) UpdateModel(c *gin.Context, modelName string) {
 	}
 	// sdModel and sdVae enable env update
 	if request.Type == config.SD_MODEL || request.Type == config.SD_VAE {
-		if err := module.FuncManagerGlobal.UpdateFunctionEnv(request.Name, request.Name); err != nil {
+		if err := module.FuncManagerGlobal.UpdateFunctionEnv(request.Name); err != nil {
 			handleError(c, http.StatusInternalServerError, config.MODELUPDATEFCERROR)
 			return
 		}

@@ -29,11 +29,11 @@ const (
 var SDManageObj *SDManager
 
 type SDManager struct {
-	pid     int
-	port    string
-	flag    bool
-	stdout  io.ReadCloser
-	endChan chan struct{}
+	pid             int
+	port            string
+	modelLoadedFlag bool
+	stdout          io.ReadCloser
+	endChan         chan struct{}
 }
 
 func NewSDManager(port string) *SDManager {
@@ -74,7 +74,13 @@ func (s *SDManager) getEnv() []string {
 }
 
 func (s *SDManager) init() error {
+	s.modelLoadedFlag = false
 	sdStartTs := utils.TimestampMS()
+	defer func() {
+		sdEndTs := utils.TimestampMS()
+		log.SDLogInstance.TraceFlow <- []string{config.TrackerKeyStableDiffusionStartup,
+			fmt.Sprintf("sd start cost=%d", sdEndTs-sdStartTs)}
+	}()
 	// start sd
 	execItem, err := utils.DoExecAsync(config.ConfigGlobal.SdShell, config.ConfigGlobal.SdPath, s.getEnv())
 	if err != nil {
@@ -87,60 +93,66 @@ func (s *SDManager) init() error {
 		for stdout.Scan() {
 			select {
 			case <-s.endChan:
-				break
+				return
 			default:
-				log.SDLogInstance.LogFlow <- stdout.Text()
+				logStr := stdout.Text()
+				if !s.modelLoadedFlag && strings.HasPrefix(logStr, "Model loaded in") {
+					s.modelLoadedFlag = true
+				}
+				log.SDLogInstance.LogFlow <- logStr
 			}
 		}
 
 	}()
 	s.pid = execItem.Pid
 	s.stdout = execItem.Stdout
-	// make sure sd started
+	// make sure sd started(port exist)
 	if !utils.PortCheck(s.port, SD_START_TIMEOUT) {
 		return errors.New("sd not start after 2min")
 	}
-	s.flag = true
-	//// start detect
-	//go s.detectAlive()
-	sdEndTs := utils.TimestampMS()
-	log.SDLogInstance.TraceFlow <- []string{config.TrackerKeyStableDiffusionStartup,
-		fmt.Sprintf("sd start cost=%d", sdEndTs-sdStartTs)}
+	if os.Getenv(config.CHECK_MODEL_LOAD) != "" && strings.Contains(os.Getenv(config.SD_START_PARAMS), "--api") {
+		// if api mode need blocking model loaded
+		s.waitModelLoaded(SD_START_TIMEOUT)
+	}
 	return nil
 }
 
-func (s *SDManager) WaitPortWork() {
-	// sd not exist, restart
-	if !checkSdExist(strconv.Itoa(s.pid)) && !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) {
-		logrus.Info("restart process....")
-		s.init()
-	} else {
-		// detect 5s
-		utils.PortCheck(s.port, 5*SD_DETECT_TIMEOUT)
-		logrus.Info("restart port ....")
+// idle charge mode need check model
+func (s *SDManager) waitModelLoaded(timeout int) {
+	timeoutChan := time.After(time.Duration(timeout) * time.Millisecond)
+	for {
+		select {
+		case <-timeoutChan:
+			return
+		default:
+			if s.modelLoadedFlag {
+				return
+			}
+		}
 	}
 }
 
-func (s *SDManager) detectAlive() {
-	retry := SD_DETECT_RETEY
-	for s.flag {
-		time.Sleep(time.Duration(SD_DETECT_TIMEOUT) * time.Millisecond)
-		if !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) && !checkSdExist(strconv.Itoa(s.pid)) {
-			retry--
-		} else {
-			retry = SD_DETECT_RETEY
-		}
-		if retry <= 0 {
-			s.endChan <- struct{}{}
-			logrus.Info("restart sd ......")
-			s.init()
-			return
-		}
+func (s *SDManager) KillAgentWithoutSd() {
+	if !checkSdExist(strconv.Itoa(s.pid)) && !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) {
+		syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
 	}
 }
+
+//func (s *SDManager) WaitPortWork() {
+//	// sd not exist, kill
+//	if !checkSdExist(strconv.Itoa(s.pid)) && !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) {
+//		syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+//	}
+//	//logrus.Info("restart process....")
+//	//s.init()
+//	//} else {
+//	//	// detect 5s
+//	//	utils.PortCheck(s.port, 5*SD_DETECT_TIMEOUT)
+//	//	logrus.Info("restart port ....")
+//	//}
+//}
 
 func (s *SDManager) Close() {
-	s.flag = false
 	syscall.Kill(-s.pid, syscall.SIGKILL)
 	s.endChan <- struct{}{}
 }
