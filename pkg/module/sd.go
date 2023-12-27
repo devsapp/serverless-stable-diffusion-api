@@ -35,12 +35,16 @@ type SDManager struct {
 	restartFlag     bool
 	stdout          io.ReadCloser
 	endChan         chan struct{}
+	signalIn        chan struct{}
+	signalOut       chan struct{}
 }
 
 func NewSDManager(port string) *SDManager {
 	SDManageObj = new(SDManager)
 	SDManageObj.port = port
 	SDManageObj.endChan = make(chan struct{}, 1)
+	SDManageObj.signalIn = make(chan struct{}, 1)
+	SDManageObj.signalOut = make(chan struct{})
 	if err := SDManageObj.init(); err != nil {
 		logrus.Error(err.Error())
 	}
@@ -152,7 +156,22 @@ func (s *SDManager) WaitPortWork() {
 	// sd not exist, kill
 	if !checkSdExist(strconv.Itoa(s.pid)) && !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) {
 		logrus.Info("restart process....")
+		s.signalIn <- struct{}{}
 		s.init()
+		select {
+		case <-s.signalOut:
+		default:
+		}
+	}
+}
+
+// WaitSDRestartFinish blocking until sd restart finish
+func (s *SDManager) WaitSDRestartFinish() {
+	select {
+	case <-s.signalIn:
+		logrus.Info("blocking until restart finish")
+		s.signalOut <- struct{}{}
+	default:
 	}
 }
 

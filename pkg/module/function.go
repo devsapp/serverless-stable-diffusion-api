@@ -53,7 +53,6 @@ type FuncManager struct {
 }
 
 func isFc3() bool {
-	logrus.Info(config.ConfigGlobal.ServiceName, config.ConfigGlobal.ServiceName == "")
 	return config.ConfigGlobal.ServiceName == ""
 }
 
