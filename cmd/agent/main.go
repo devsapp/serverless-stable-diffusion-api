@@ -13,10 +13,10 @@ import (
 )
 
 const (
-	defaultPort       = "8010"
-	defaultDBType     = datastore.SQLite
+	defaultPort       = "7860"
+	defaultDBType     = datastore.TableStore
 	shutdownTimeout   = 5 * time.Second // 5s
-	defaultConfigPath = "config.json"
+	defaultConfigPath = "config.yaml"
 )
 
 func handleSignal() {

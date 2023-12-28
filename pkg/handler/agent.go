@@ -680,7 +680,7 @@ func ReverseProxy(c *gin.Context) {
 		req.URL.Scheme = remote.Scheme
 		req.URL.Host = remote.Host
 		if strings.HasPrefix(req.URL.Path, "/internal/ping") {
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 		}
 		originalDirector(req)
 	}
