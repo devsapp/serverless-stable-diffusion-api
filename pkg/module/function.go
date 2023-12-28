@@ -166,7 +166,7 @@ func (f *FuncManager) UpdateFunctionEnv(key string) error {
 		if _, err := f.fc3Client.UpdateFunction(&functionName,
 			new(fc3.UpdateFunctionRequest).SetRequest(new(fc3.UpdateFunctionInput).SetRuntime("custom-container").
 				SetEnvironmentVariables(res.Env).SetGpuConfig(new(fc3.GPUConfig).
-				SetGpuMemorySize(res.GpuMemorySize)))); err != nil {
+				SetGpuMemorySize(res.GpuMemorySize).SetGpuType(res.InstanceType)))); err != nil {
 			logrus.Info(err.Error())
 			return err
 		}

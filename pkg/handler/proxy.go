@@ -415,6 +415,9 @@ func (p *ProxyHandler) GetTaskProgress(c *gin.Context, taskId string) {
 	}
 	if status, ok := data[datastore.KTaskStatus]; ok && (status == config.TASK_FINISH || status == config.TASK_FAILED) {
 		resp.Progress = 1
+	} else if resp.Progress == 1 {
+		// task finish need status == config.TASK_FINISH|config.TASK_FAILED
+		resp.Progress = 0.99
 	}
 	resp.TaskId = taskId
 	c.JSON(http.StatusOK, resp)
