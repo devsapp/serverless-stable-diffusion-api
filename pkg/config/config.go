@@ -2,7 +2,7 @@ package config
 
 import (
 	"errors"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -116,6 +116,9 @@ func (c *Config) EnableLogin() bool {
 }
 
 func (c *Config) GetSDPort() string {
+	if c.SdUrlPrefix == "" {
+		return DefaultSdPort
+	}
 	items := strings.Split(c.SdUrlPrefix, ":")
 	if len(items) == 3 {
 		return items[2]
@@ -257,11 +260,11 @@ func (c *Config) setDefaults() {
 }
 
 func InitConfig(fn string) error {
+	configYaml := new(ConfigYaml)
 	yamlFile, err := ioutil.ReadFile(fn)
 	if err != nil {
 		return err
 	}
-	configYaml := new(ConfigYaml)
 	err = yaml.Unmarshal(yamlFile, &configYaml)
 	if err != nil {
 		return err

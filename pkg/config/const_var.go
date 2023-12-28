@@ -97,7 +97,8 @@ const (
 
 // default value
 const (
-	DefaultSdUrlPrefix   = "http://localhost"
+	DefaultSdPort        = "7861"
+	DefaultSdPath        = "/stable-diffusion-webui"
 	DefaultExtraArgs     = "--api"
 	DefaultSessionExpire = 3600
 	DefaultLoginSwitch   = "off"       // value: off|on
