@@ -24,7 +24,7 @@ const (
 	SD_CONFIG         = "config.json"
 	SD_START_TIMEOUT  = 5 * 60 * 1000 // 5min
 	SD_DETECT_TIMEOUT = 500           // 500ms
-	SD_DETECT_RETEY   = 4             // detect 4 fail
+	SD_REQUEST_WAIT   = 30 * 1000     // 30s
 )
 
 var (
@@ -174,7 +174,7 @@ func (s *SDManager) WaitSDRestartFinish() {
 	//	s.signalOut <- struct{}{}
 	//default:
 	//}
-	if utils.PortCheck(s.port, SD_START_TIMEOUT) {
+	if utils.PortCheck(s.port, SD_REQUEST_WAIT) {
 		time.Sleep(time.Duration(1) * time.Second)
 	}
 }
