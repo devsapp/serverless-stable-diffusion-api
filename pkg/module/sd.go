@@ -174,7 +174,9 @@ func (s *SDManager) WaitSDRestartFinish() {
 	//	s.signalOut <- struct{}{}
 	//default:
 	//}
-	utils.PortCheck(s.port, SD_START_TIMEOUT)
+	if utils.PortCheck(s.port, SD_START_TIMEOUT) {
+		time.Sleep(time.Duration(1) * time.Second)
+	}
 }
 
 func (s *SDManager) Close() {
