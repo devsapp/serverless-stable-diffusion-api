@@ -15,18 +15,22 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
 
 const (
 	SD_CONFIG         = "config.json"
-	SD_START_TIMEOUT  = 2 * 60 * 1000 // 2min
+	SD_START_TIMEOUT  = 5 * 60 * 1000 // 5min
 	SD_DETECT_TIMEOUT = 500           // 500ms
 	SD_DETECT_RETEY   = 4             // detect 4 fail
 )
 
-var SDManageObj *SDManager
+var (
+	SDManageObj *SDManager
+	once        sync.Once
+)
 
 type SDManager struct {
 	pid             int
@@ -112,13 +116,15 @@ func (s *SDManager) init() error {
 	s.stdout = execItem.Stdout
 	// make sure sd started(port exist)
 	if !utils.PortCheck(s.port, SD_START_TIMEOUT) {
-		return errors.New("sd not start after 2min")
+		return errors.New("sd not start after 5min")
 	}
 	if os.Getenv(config.CHECK_MODEL_LOAD) != "" && strings.Contains(os.Getenv(config.SD_START_PARAMS), "--api") {
 		// if api mode need blocking model loaded
 		s.waitModelLoaded(SD_START_TIMEOUT)
 	}
-	go s.detectSdAlive()
+	once.Do(func() {
+		go s.detectSdAlive()
+	})
 	return nil
 }
 
@@ -140,8 +146,8 @@ func (s *SDManager) waitModelLoaded(timeout int) {
 func (s *SDManager) detectSdAlive() {
 	// SD_DETECT_TIMEOUT ms
 	for {
-		s.KillAgentWithoutSd()
-		//s.WaitPortWork()
+		//s.KillAgentWithoutSd()
+		s.WaitPortWork()
 		time.Sleep(time.Duration(SD_DETECT_TIMEOUT) * time.Millisecond)
 	}
 }
@@ -156,23 +162,19 @@ func (s *SDManager) WaitPortWork() {
 	// sd not exist, kill
 	if !checkSdExist(strconv.Itoa(s.pid)) && !utils.PortCheck(s.port, SD_DETECT_TIMEOUT) {
 		logrus.Info("restart process....")
-		s.signalIn <- struct{}{}
 		s.init()
-		select {
-		case <-s.signalOut:
-		default:
-		}
 	}
 }
 
 // WaitSDRestartFinish blocking until sd restart finish
 func (s *SDManager) WaitSDRestartFinish() {
-	select {
-	case <-s.signalIn:
-		logrus.Info("blocking until restart finish")
-		s.signalOut <- struct{}{}
-	default:
-	}
+	//select {
+	//case <-s.signalIn:
+	//	logrus.Info("blocking until restart finish")
+	//	s.signalOut <- struct{}{}
+	//default:
+	//}
+	utils.PortCheck(s.port, SD_START_TIMEOUT)
 }
 
 func (s *SDManager) Close() {
