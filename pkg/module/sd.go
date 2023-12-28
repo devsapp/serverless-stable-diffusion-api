@@ -140,8 +140,8 @@ func (s *SDManager) waitModelLoaded(timeout int) {
 func (s *SDManager) detectSdAlive() {
 	// SD_DETECT_TIMEOUT ms
 	for {
-		//s.KillAgentWithoutSd()
-		s.WaitPortWork()
+		s.KillAgentWithoutSd()
+		//s.WaitPortWork()
 		time.Sleep(time.Duration(SD_DETECT_TIMEOUT) * time.Millisecond)
 	}
 }
