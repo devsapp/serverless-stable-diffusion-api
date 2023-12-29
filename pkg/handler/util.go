@@ -256,36 +256,33 @@ func getFunctionDatas(store datastore.Datastore,
 	// get function resource
 	Datas := make(map[string]*module.FuncResource)
 	if request.Models == nil || len(*request.Models) == 0 {
-		funcDatas, err := store.ListAll([]string{datastore.KModelServiceKey, datastore.KModelServiceFunctionName,
-			datastore.KModelServiceResource})
+		funcDatas, err := store.ListAll([]string{datastore.KModelServiceKey, datastore.KModelServiceFunctionName})
 		if err != nil {
 			return nil, err
 		}
 		for _, funcData := range funcDatas {
-			funcDataNew, err := updateFuncResource(request, funcData[datastore.KModelServiceResource].(string))
-			if err != nil {
-				return nil, err
-			}
-			if funcDataNew != nil {
-				Datas[funcData[datastore.KModelServiceKey].(string)] = funcDataNew
+			functionName := funcData[datastore.KModelServiceFunctionName].(string)
+			if resource := module.FuncManagerGlobal.GetFuncResource(functionName); resource != nil {
+				funcDataNew, err := updateFuncResource(request, resource)
+				if err != nil {
+					return nil, err
+				}
+				if funcDataNew != nil {
+					Datas[funcData[datastore.KModelServiceKey].(string)] = funcDataNew
+				}
 			}
 		}
 	} else {
 		for _, model := range *request.Models {
-			funcData, err := store.Get(model, []string{datastore.KModelServiceResource,
-				datastore.KModelServiceFunctionName})
-			if err != nil {
-				return nil, err
-			}
-			if funcData == nil || len(funcData) == 0 {
-				return nil, errors.New(fmt.Sprintf("model=%s not exist", model))
-			}
-			funcDataNew, err := updateFuncResource(request, funcData[datastore.KModelServiceResource].(string))
-			if err != nil {
-				return nil, err
-			}
-			if funcDataNew != nil {
-				Datas[model] = funcDataNew
+			functionName := module.GetFunctionName(model)
+			if resource := module.FuncManagerGlobal.GetFuncResource(functionName); resource != nil {
+				funcDataNew, err := updateFuncResource(request, resource)
+				if err != nil {
+					return nil, err
+				}
+				if funcDataNew != nil {
+					Datas[model] = funcDataNew
+				}
 			}
 		}
 	}
@@ -293,12 +290,8 @@ func getFunctionDatas(store datastore.Datastore,
 }
 
 func updateFuncResource(request *models.BatchUpdateSdResourceRequest,
-	resource string) (*module.FuncResource, error) {
+	res *module.FuncResource) (*module.FuncResource, error) {
 	isDiff := false
-	var res module.FuncResource
-	if err := json.Unmarshal([]byte(resource), &res); err != nil {
-		return nil, err
-	}
 	// update resource
 	// image
 	if request.Image != nil && *request.Image != "" && *request.Image != res.Image {
@@ -336,7 +329,7 @@ func updateFuncResource(request *models.BatchUpdateSdResourceRequest,
 		isDiff = true
 	}
 	if isDiff {
-		return &res, nil
+		return res, nil
 	} else {
 		return nil, nil
 	}

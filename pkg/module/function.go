@@ -154,13 +154,12 @@ func (f *FuncManager) UpdateAllFunctionEnv() error {
 // UpdateFunctionEnv update instance env
 // input modelName and env
 func (f *FuncManager) UpdateFunctionEnv(key string) error {
-	// check model->function exist
-	res := f.funcExist(key)
+	functionName := GetFunctionName(key)
+	res := f.GetFuncResource(functionName)
 	if res == nil {
 		return nil
 	}
 	res.Env[config.MODEL_REFRESH_SIGNAL] = utils.String(fmt.Sprintf("%d", utils.TimestampS())) // value = now timestamp
-	functionName := GetFunctionName(key)
 	//compatible fc3.0
 	if isFc3() {
 		if _, err := f.fc3Client.UpdateFunction(&functionName,
@@ -275,6 +274,36 @@ func (f *FuncManager) GetFcFuncEnv(functionName string) *map[string]*string {
 	return nil
 }
 
+func (f *FuncManager) GetFuncResource(functionName string) *FuncResource {
+	if funcBody := f.GetFcFunc(functionName); funcBody != nil {
+		switch funcBody.(type) {
+		case *fc.GetFunctionResponse:
+			info := funcBody.(*fc.GetFunctionResponse)
+			return &FuncResource{
+				Image:         *info.Body.CustomContainerConfig.Image,
+				CPU:           *info.Body.Cpu,
+				MemorySize:    *info.Body.MemorySize,
+				GpuMemorySize: *info.Body.GpuMemorySize,
+				Timeout:       *info.Body.Timeout,
+				InstanceType:  *info.Body.InstanceType,
+				Env:           info.Body.EnvironmentVariables,
+			}
+		case *fc3.GetFunctionResponse:
+			info := funcBody.(*fc3.GetFunctionResponse)
+			return &FuncResource{
+				Image:         *info.Body.CustomContainerConfig.Image,
+				CPU:           *info.Body.Cpu,
+				MemorySize:    *info.Body.MemorySize,
+				GpuMemorySize: *info.Body.GpuConfig.GpuMemorySize,
+				Timeout:       *info.Body.Timeout,
+				InstanceType:  *info.Body.GpuConfig.GpuType,
+				Env:           info.Body.EnvironmentVariables,
+			}
+		}
+	}
+	return nil
+}
+
 // GetFcFunc  get fc function info
 func (f *FuncManager) GetFcFunc(functionName string) interface{} {
 	if isFc3() {
@@ -320,40 +349,13 @@ func (f *FuncManager) loadFunc() {
 	}
 }
 
-// check model->func exist
-func (f *FuncManager) funcExist(key string) *FuncResource {
-	var res FuncResource
-	if data, err := f.funcStore.Get(key, []string{datastore.KModelServiceResource}); err != nil ||
-		data == nil || len(data) == 0 {
-		return nil
-	} else {
-		resStr := data[datastore.KModelServiceResource].(string)
-		if err := json.Unmarshal([]byte(resStr), &res); err != nil {
-			return nil
-		}
-	}
-	return &res
-}
-
 // write func into db
 func (f *FuncManager) putFunc(key, functionName, sdModel, endpoint string) {
-	env := getEnv(sdModel)
-	res := FuncResource{
-		CPU:           config.ConfigGlobal.CPU,
-		GpuMemorySize: config.ConfigGlobal.GpuMemorySize,
-		MemorySize:    config.ConfigGlobal.MemorySize,
-		Timeout:       config.ConfigGlobal.Timeout,
-		InstanceType:  config.ConfigGlobal.InstanceType,
-		Env:           env,
-		Image:         config.ConfigGlobal.Image,
-	}
-	resStr, _ := json.Marshal(res)
 	f.funcStore.Put(key, map[string]interface{}{
 		datastore.KModelServiceKey:            key,
 		datastore.KModelServiceSdModel:        sdModel,
 		datastore.KModelServiceFunctionName:   functionName,
 		datastore.KModelServiceEndPoint:       endpoint,
-		datastore.KModelServiceResource:       string(resStr),
 		datastore.KModelServiceCreateTime:     fmt.Sprintf("%d", utils.TimestampS()),
 		datastore.KModelServiceLastModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
 	})

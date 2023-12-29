@@ -144,21 +144,7 @@ func (p *ProxyHandler) BatchUpdateResource(c *gin.Context) {
 		return
 	}
 	// update fc
-	success, fail, errs := module.FuncManagerGlobal.UpdateFunctionResource(funcDatas)
-	// update db with success function
-	for _, name := range success {
-		res := funcDatas[name]
-		if str, err := json.Marshal(res); err == nil {
-			if err = p.functionStore.Update(name, map[string]interface{}{
-				datastore.KModelServiceResource:       string(str),
-				datastore.KModelServiceLastModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
-			}); err == nil {
-				continue
-			}
-		}
-		fail = append(fail, module.GetFunctionName(name))
-		errs = append(errs, fmt.Sprintf("%s modify fc success, update db error", name))
-	}
+	_, fail, errs := module.FuncManagerGlobal.UpdateFunctionResource(funcDatas)
 	// response
 	if len(fail) == 0 {
 		c.JSON(http.StatusOK, gin.H{"status": "success"})

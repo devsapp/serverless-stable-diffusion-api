@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/server"
@@ -48,7 +49,7 @@ func main() {
 	flag.Parse()
 
 	logInit(*mode)
-	logrus.Info("proxy start")
+	logrus.Info(fmt.Sprintf("%s start", os.Getenv(config.SERVER_NAME)))
 
 	// init config
 	if err := config.InitConfig(*configFile); err != nil {

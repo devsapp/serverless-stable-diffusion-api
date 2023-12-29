@@ -8,7 +8,6 @@ const (
 	KModelServiceSdModel        = "SD_MODEL"
 	KModelServiceEndPoint       = "END_POINT"
 	KModelServerImage           = "IMAGE"
-	KModelServiceResource       = "RESOURCE"
 	KModelServiceMessage        = "MESSAGE"
 	KModelServiceCreateTime     = "FUNC_CREATE_TIME"
 	KModelServiceLastModifyTime = "FUNC_LAST_MODIFY_TIME"
