@@ -80,7 +80,19 @@ func InitFuncManager(funcStore datastore.Datastore) error {
 	}
 	// load func endpoint to cache
 	FuncManagerGlobal.loadFunc()
+	FuncManagerGlobal.checkDbAndFcMatch()
 	return nil
+}
+
+// check ots table function list match fc function or not
+func (f *FuncManager) checkDbAndFcMatch() {
+	for sdModel, _ := range f.endpoints {
+		functionName := GetFunctionName(sdModel)
+		if f.GetFcFunc(functionName) == nil {
+			logrus.Errorf("sdModel:%s function in db, not in FC, please delete ots table fucntion key=%s",
+				sdModel, sdModel)
+		}
+	}
 }
 
 // GetLastInvokeEndpoint get last invoke endpoint

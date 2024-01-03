@@ -334,3 +334,8 @@ func updateFuncResource(request *models.BatchUpdateSdResourceRequest,
 		return nil, nil
 	}
 }
+
+// check stable_diffusion_model val not "" or nil
+func checkSdModelValid(sdModel string) bool {
+	return sdModel != ""
+}

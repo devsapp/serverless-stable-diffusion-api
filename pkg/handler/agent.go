@@ -140,7 +140,7 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 		request.OverrideSettings = &overrideSettings
 	}
 	if err := a.updateOverrideSettingsRequest(request.OverrideSettings, username, configVer,
-		request.StableDiffusionModel, request.SdVae); err != nil {
+		request.StableDiffusionModel, *request.SdVae); err != nil {
 		handleError(c, http.StatusInternalServerError, "please check config")
 		return
 	}
@@ -217,7 +217,7 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 		request.OverrideSettings = &overrideSettings
 	}
 	if err := a.updateOverrideSettingsRequest(request.OverrideSettings, username, configVer,
-		request.StableDiffusionModel, request.SdVae); err != nil {
+		request.StableDiffusionModel, *request.SdVae); err != nil {
 		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("update OverrideSettings err=%s", err.Error())
 		handleError(c, http.StatusInternalServerError, "please check config")
 		return

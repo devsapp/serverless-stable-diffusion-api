@@ -518,6 +518,10 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
 		return
 	}
+	if !checkSdModelValid(request.StableDiffusionModel) {
+		handleError(c, http.StatusBadRequest, "stable_diffusion_model val not valid, please set valid val")
+		return
+	}
 	// taskId
 	taskId := c.GetHeader(taskKey)
 	if taskId == "" {
@@ -552,7 +556,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 	}
 	if config.ConfigGlobal.IsServerTypeMatch(config.PROXY) {
 		// check request valid: sdModel and sdVae exist
-		if existed := p.checkModelExist(request.StableDiffusionModel, request.SdVae); !existed {
+		if existed := p.checkModelExist(request.StableDiffusionModel, *request.SdVae); !existed {
 			handleError(c, http.StatusNotFound, "model not found, please check request")
 			return
 		}
@@ -651,6 +655,10 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 		handleError(c, http.StatusBadRequest, config.BADREQUEST)
 		return
 	}
+	if !checkSdModelValid(request.StableDiffusionModel) {
+		handleError(c, http.StatusBadRequest, "stable_diffusion_model val not valid, please set valid val")
+		return
+	}
 	// taskId
 	taskId := c.GetHeader(taskKey)
 	if taskId == "" {
@@ -685,7 +693,7 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 	}
 	if config.ConfigGlobal.IsServerTypeMatch(config.PROXY) {
 		// check request valid: sdModel and sdVae exist
-		if existed := p.checkModelExist(request.StableDiffusionModel, request.SdVae); !existed {
+		if existed := p.checkModelExist(request.StableDiffusionModel, *request.SdVae); !existed {
 			handleError(c, http.StatusNotFound, "model not found, please check request")
 			return
 		}

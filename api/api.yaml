@@ -419,11 +419,10 @@ components:
     Txt2ImgRequest:
       required:
         - stable_diffusion_model
-        - sd_vae
-        - prompt
       properties:
         stable_diffusion_model:
           type: string
+          minLength: 1
           example: "diffusion_v1"
         sd_vae:
           type: string
@@ -595,10 +594,10 @@ components:
     Img2ImgRequest:
       required:
         - stable_diffusion_model
-        - sd_vae
       properties:
         stable_diffusion_model:
           type: string
+          minLength: 1
           example: "diffusion_v2"
         sd_vae:
           type: string
