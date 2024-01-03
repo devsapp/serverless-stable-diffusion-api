@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
@@ -286,6 +287,9 @@ func (c *Config) setDefaults() {
 	}
 	if c.Timeout == 0 {
 		c.Timeout = DefaultTimeout
+	}
+	if c.SdUrlPrefix == "" {
+		c.SdUrlPrefix = fmt.Sprintf("http://localhost:%s", DefaultSdPort)
 	}
 }
 

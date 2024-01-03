@@ -35,18 +35,22 @@ func NewAgentServer(port string, dbType datastore.DatastoreType, mode string) (*
 	router.Use(gin.Logger(), gin.Recovery())
 	router.Use(handler.Stat())
 	tableFactory := datastore.DatastoreFactory{}
-	// init function table
-	funcDataStore := tableFactory.NewTable(dbType, datastore.KModelServiceTableName)
-	// init func manager
-	if err := module.InitFuncManager(funcDataStore); err != nil {
-		return nil, err
-	}
 	if config.ConfigGlobal.ExposeToUser() {
+		// init func manager
+		if err := module.InitFuncManager(nil); err != nil {
+			return nil, err
+		}
 		agentServer.sdManager = module.NewSDManager(config.ConfigGlobal.GetSDPort())
 		// enable ReverserProxy
 		router.Any("/*path", handler.ReverseProxy)
 	} else {
 		// only api
+		// init function table
+		funcDataStore := tableFactory.NewTable(dbType, datastore.KModelServiceTableName)
+		// init func manager
+		if err := module.InitFuncManager(funcDataStore); err != nil {
+			return nil, err
+		}
 		// init oss manager
 		if err := module.NewOssManager(); err != nil {
 			logrus.Fatal("oss init fail")

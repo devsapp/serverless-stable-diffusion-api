@@ -78,9 +78,11 @@ func InitFuncManager(funcStore datastore.Datastore) error {
 	if err != nil {
 		return err
 	}
-	// load func endpoint to cache
-	FuncManagerGlobal.loadFunc()
-	FuncManagerGlobal.checkDbAndFcMatch()
+	if funcStore != nil {
+		// load func endpoint to cache
+		FuncManagerGlobal.loadFunc()
+		FuncManagerGlobal.checkDbAndFcMatch()
+	}
 	return nil
 }
 
