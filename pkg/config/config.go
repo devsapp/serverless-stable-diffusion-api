@@ -262,7 +262,11 @@ func (c *Config) setDefaults() {
 		c.LogRemoteService = DefaultLogService
 	}
 	if c.SdPath == "" {
-		c.SdPath = DefaultSdPath
+		if os.Getenv(SERVER_NAME) == PROXY || os.Getenv(SERVER_NAME) == CONTROL {
+			c.SdPath = DefaultSdPathProxy
+		} else {
+			c.SdPath = DefaultSdPath
+		}
 	}
 	if c.CAPort == 0 {
 		c.CAPort = DefaultCaPort

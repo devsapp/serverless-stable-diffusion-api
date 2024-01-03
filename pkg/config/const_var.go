@@ -99,6 +99,7 @@ const (
 const (
 	DefaultSdPort              = "7861"
 	DefaultSdPath              = "/stable-diffusion-webui"
+	DefaultSdPathProxy         = "/mnt/auto/sd"
 	DefaultExtraArgs           = "--api"
 	DefaultSessionExpire       = 3600
 	DefaultLoginSwitch         = "off"       // value: off|on
