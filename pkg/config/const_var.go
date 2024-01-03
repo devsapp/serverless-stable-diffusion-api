@@ -97,15 +97,24 @@ const (
 
 // default value
 const (
-	DefaultSdPort        = "7861"
-	DefaultSdPath        = "/stable-diffusion-webui"
-	DefaultExtraArgs     = "--api"
-	DefaultSessionExpire = 3600
-	DefaultLoginSwitch   = "off"       // value: off|on
-	DefaultUseLocalModel = "yes"       // value: yes|no
-	DefaultFlexMode      = "multiFunc" // value: singleFunc|multiFunc
-	DefaultOssMode       = "remote"
-	DefaultLogService    = "http://server-ai-backend-agwwspzdwb.cn-hangzhou.devsapp.net"
+	DefaultSdPort              = "7861"
+	DefaultSdPath              = "/stable-diffusion-webui"
+	DefaultExtraArgs           = "--api"
+	DefaultSessionExpire       = 3600
+	DefaultLoginSwitch         = "off"       // value: off|on
+	DefaultUseLocalModel       = "yes"       // value: yes|no
+	DefaultFlexMode            = "multiFunc" // value: singleFunc|multiFunc
+	DefaultOssMode             = "local"
+	DefaultOssPath             = "/mnt/oss"
+	DefaultLogService          = "http://server-ai-backend-agwwspzdwb.cn-hangzhou.devsapp.net"
+	DefaultCaPort              = 7860
+	DefaultCpu                 = 8
+	DefaultDisk                = 512
+	DefaultInstanceConcurrency = 1
+	DefaultInstanceType        = "fc.gpu.tesla.1"
+	DefaultMemorySize          = 32768
+	DefaultGpuMemorySize       = 16384
+	DefaultTimeout             = 600
 )
 
 // function http trigger

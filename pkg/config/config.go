@@ -254,21 +254,42 @@ func (c *Config) setDefaults() {
 	if c.OssMode == "" {
 		c.OssMode = DefaultOssMode
 	}
+	if c.OssPath == "" {
+		c.OssPath = DefaultOssPath
+	}
 	if c.LogRemoteService == "" {
 		c.LogRemoteService = DefaultLogService
+	}
+	if c.SdPath == "" {
+		c.SdPath = DefaultSdPath
+	}
+	if c.CAPort == 0 {
+		c.CAPort = DefaultCaPort
+	}
+	if c.CPU == 0 {
+		c.CPU = DefaultCpu
+	}
+	if c.DiskSize == 0 {
+		c.DiskSize = DefaultDisk
+	}
+	if c.InstanceConcurrency == 0 {
+		c.InstanceConcurrency = DefaultInstanceConcurrency
+	}
+	if c.InstanceType == "" {
+		c.InstanceType = DefaultInstanceType
+	}
+	if c.MemorySize == 0 {
+		c.MemorySize = DefaultMemorySize
+	}
+	if c.GpuMemorySize == 0 {
+		c.GpuMemorySize = DefaultGpuMemorySize
+	}
+	if c.Timeout == 0 {
+		c.Timeout = DefaultTimeout
 	}
 }
 
 func InitConfig(fn string) error {
-	configYaml := new(ConfigYaml)
-	yamlFile, err := ioutil.ReadFile(fn)
-	if err != nil {
-		return err
-	}
-	err = yaml.Unmarshal(yamlFile, &configYaml)
-	if err != nil {
-		return err
-	}
 	configEnv := new(ConfigEnv)
 	configEnv.AccountId = os.Getenv(ACCOUNT_ID)
 	configEnv.AccessKeyId = os.Getenv(ACCESS_KEY_ID)
@@ -282,6 +303,14 @@ func InitConfig(fn string) error {
 		if val == "" {
 			return errors.New("env not set ACCOUNT_ID || ACCESS_KEY_Id || " +
 				"ACCESS_KEY_SECRET || REGION, please check")
+		}
+	}
+	configYaml := new(ConfigYaml)
+	yamlFile, err := ioutil.ReadFile(fn)
+	if err == nil {
+		err = yaml.Unmarshal(yamlFile, &configYaml)
+		if err != nil {
+			return err
 		}
 	}
 	ConfigGlobal = &Config{

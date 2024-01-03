@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	defaultPort       = "8000"
+	defaultPort       = "7860"
 	defaultDBType     = datastore.SQLite
 	shutdownTimeout   = 5 * time.Second // 5s
 	defaultConfigPath = "config.json"
