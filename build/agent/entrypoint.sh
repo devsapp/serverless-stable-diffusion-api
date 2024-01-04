@@ -77,6 +77,8 @@ MOUNTS["${ROOT}/models"]="${NAS_DIR}/models"
 MOUNTS["${ROOT}/localizations"]="${NAS_DIR}/localizations"
 MOUNTS["${ROOT}/configs"]="${NAS_DIR}/configs"
 MOUNTS["${ROOT}/embeddings"]="${NAS_DIR}/embeddings"
+MOUNTS["${ROOT}/extensions-builtin"]="${NAS_DIR}/extensions-builtin"
+MOUNTS["${ROOT}/textual_inversion_templates"]="${NAS_DIR}/textual_inversion_templates"
 MOUNTS["${ROOT}/config.json"]="${NAS_DIR}/config.json"
 MOUNTS["${ROOT}/ui-config.json"]="${NAS_DIR}/ui-config.json"
 MOUNTS["${ROOT}/extensions"]="${NAS_DIR}/extensions"
@@ -104,9 +106,8 @@ export PYTHONPATH="${PYTHONPATH:-}:${NAS_DIR}/python"
 
 echo "args: $ARGS"
 
-echo "------start agent background---------"
-nohup /agent/agent -port=7860 -dbType=tableStore -config=/agent/agent.yaml &>/agent/log&
+/agent/agent -port=7860 -dbType=tableStore -config=/agent/agent.yaml -sd="python -u webui.py --listen --port 7861 ${ARGS}"
 
-echo "------start webui---------"
-
-python -u webui.py --nowebui --listen --port 7861 ${ARGS}
+#echo "------start webui---------"
+#
+#python -u webui.py --listen --port 7861 ${ARGS}

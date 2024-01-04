@@ -3,41 +3,38 @@ package module
 import (
 	"fmt"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
-	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
-	"log"
+	"github.com/sirupsen/logrus"
 	"net/http"
 )
 
 var client = &http.Client{}
 
 // ModelChangeEvent  models change callback func
-// only deal lore/controNet models
 func ModelChangeEvent(v any) {
-	modelInfo := v.(*modelChangeSignal)
-	modelType := modelInfo.modelType
+	modelType := v.(string)
 	path := ""
+	method := "GET"
 	switch modelType {
-	case config.LORA_MODEL:
-		path = config.REFRESH_LORAS
+	case config.SD_MODEL:
+		path = config.REFRESH_SD_MODEL
+		method = "POST"
 	case config.CONTORLNET_MODEL:
 		path = config.REFRESH_CONTROLNET
+		method = "GET"
+	case config.SD_VAE:
+		path = config.REFRESH_VAE
+		method = "POST"
 	default:
-		log.Printf("modelType=%s no need reload", modelType)
+		logrus.Infof("[ModelChangeEvent] modelType=%s no need reload", modelType)
 		return
 	}
 	url := fmt.Sprintf("%s%s", config.ConfigGlobal.SdUrlPrefix, path)
-	req, _ := http.NewRequest("GET", url, nil)
+	req, _ := http.NewRequest(method, url, nil)
 	_, err := client.Do(req)
 	if err != nil {
-		log.Println("listen model refresh do fail")
+		logrus.Info("[ModelChangeEvent] listen model refresh do fail")
 		return
 	}
-	// update
-	if err = modelInfo.modelStore.Update(modelInfo.modelName, map[string]interface{}{
-		datastore.KModelStatus: config.MODEL_LOADED}); err != nil {
-		log.Println("listen model update status fail err=", err.Error())
-	}
-	log.Println("listen models signal, model=", modelInfo.modelName)
 }
 
 // CancelEvent tasks cancel signal callback
@@ -47,7 +44,19 @@ func CancelEvent(v any) {
 	req, _ := http.NewRequest("POST", url, nil)
 	_, err := client.Do(req)
 	if err != nil {
-		log.Println("listen cancel do fail")
+		logrus.Info("[CancelEvent] listen cancel do fail")
 	}
-	log.Println("listen cancel signal, url=", url)
+	logrus.Info("[CancelEvent] listen cancel signal, url=", url)
+}
+
+// ConfigEvent config.json
+func ConfigEvent(v any) {
+	// update all function env
+	retry := 2
+	for retry > 0 {
+		if err := FuncManagerGlobal.UpdateAllFunctionEnv(); err == nil {
+			return
+		}
+		retry--
+	}
 }

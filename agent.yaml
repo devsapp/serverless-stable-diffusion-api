@@ -1,4 +1,4 @@
-otsEndpoint: https://sd-api-test.cn-beijing.ots.aliyuncs.com
+otsEndpoint: https://sd-api-t.cn-beijing.ots.aliyuncs.com
 otsInstanceName: sd-api-t
 otsTimeToAlive: -1
 otsMaxVersion: 1
@@ -6,8 +6,12 @@ ossEndpoint: oss-cn-beijing.aliyuncs.com
 bucket: sd-api-t
 ossMode: local
 ossPath: /mnt/oss
-dbSqlite: ./sqlite3
+dbSqlite: /mnt/auto/sd/sqlite3
 listenInterval: 1
 sdUrlPrefix: http://localhost:7861
+sdShell: python -u webui.py --listen --xformers --enable-insecure-extension-access --skip-version-check --no-download-sd-model --port 7861
 progressImageOutputSwitch: off
 sdPath: /stable-diffusion-webui
+useLocalModel: yes
+exposeToUser: No
+serverName: agent

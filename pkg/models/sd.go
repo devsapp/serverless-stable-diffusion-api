@@ -6,6 +6,11 @@ type Txt2ImgResult struct {
 	Info       string                 `json:"info"`
 }
 
+type ExtraImageResult struct {
+	HTMLInfo string `json:"html_info"`
+	Image    string `json:"image"`
+}
+
 type ProgressResult struct {
 	CurrentImage string  `json:"current_image"`
 	EtaRelative  float64 `json:"eta_relative"`
@@ -32,7 +37,7 @@ type Args struct {
 	Enabled       bool    `json:"enabled"`
 	GuidanceEnd   float64 `json:"guidance_end"`
 	GuidanceStart float64 `json:"guidance_start"`
-	InputImage    string  `json:"image"`
+	Image         string  `json:"image"`
 	Lowvram       bool    `json:"lowvram"`
 	Model         string  `json:"model"`
 	Module        string  `json:"module"`

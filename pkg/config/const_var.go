@@ -16,7 +16,7 @@ const (
 	TASK_QUEUE      = "waiting"
 	TASK_FINISH     = "succeeded"
 
-	HTTPTIMEOUT = 5 * 60 * time.Second
+	HTTPTIMEOUT = 10 * 60 * time.Second
 
 	// cancel val
 	CANCEL_INIT  = 0
@@ -44,12 +44,18 @@ const (
 
 // sd api path
 const (
-	REFRESH_LORAS      = "/sdapi/v1/loras"
+	//REFRESH_LORAS      = "/sdapi/v1/refresh-loras"
+	//GET_LORAS          = "/sdapi/v1/loras"
+	GET_SD_MODEL       = "/sdapi/v1/sd-models"
+	REFRESH_SD_MODEL   = "/sdapi/v1/refresh-checkpoints"
+	GET_SD_VAE         = "/sdapi/v1/sd-vae"
+	REFRESH_VAE        = "/sdapi/v1/refresh-vae"
 	REFRESH_CONTROLNET = "/controlnet/model_list"
 	CANCEL             = "/sdapi/v1/interrupt"
 	TXT2IMG            = "/sdapi/v1/txt2img"
 	IMG2IMG            = "/sdapi/v1/img2img"
 	PROGRESS           = "/sdapi/v1/progress"
+	EXTRAIMAGES        = "/sdapi/v1/extra-single-image"
 )
 
 // ots
@@ -59,19 +65,57 @@ const (
 
 // env
 const (
-	ACCOUNT_ID        = "FC_ACCOUNT_ID"
-	ACCESS_KEY_ID     = "ALIBABA_CLOUD_ACCESS_KEY_ID"
-	ACCESS_KEY_SECRET = "ALIBABA_CLOUD_ACCESS_KEY_SECRET"
-	ACCESS_KET_TOKEN  = "ALIBABA_CLOUD_SECURITY_TOKEN"
-	REGION            = "FC_REGION"
-	SERVICE_NAME      = "FC_SERVICE_NAME"
-	OTS_ENDPOINT      = "OTS_ENDPOINT"
-	OTS_INSTANCE      = "OTS_INSTANCE"
-	OSS_ENDPOINT      = "OSS_ENDPOINT"
-	OSS_BUCKET        = "OSS_BUCKET"
-	OSS_PATH          = "OSS_PATH"
-	OSS_MODE          = "OSS_MODE"
-	LOGINSWITCH       = "LOGIN_SWITCH"
+	ACCOUNT_ID              = "FC_ACCOUNT_ID"
+	ACCESS_KEY_ID           = "ALIBABA_CLOUD_ACCESS_KEY_ID"
+	ACCESS_KEY_SECRET       = "ALIBABA_CLOUD_ACCESS_KEY_SECRET"
+	ACCESS_KET_TOKEN        = "ALIBABA_CLOUD_SECURITY_TOKEN"
+	REGION                  = "FC_REGION"
+	SERVICE_NAME            = "FC_SERVICE_NAME"
+	OTS_ENDPOINT            = "OTS_ENDPOINT"
+	OTS_INSTANCE            = "OTS_INSTANCE"
+	OSS_ENDPOINT            = "OSS_ENDPOINT"
+	OSS_BUCKET              = "OSS_BUCKET"
+	OSS_PATH                = "OSS_PATH"
+	OSS_MODE                = "OSS_MODE"
+	LOGINSWITCH             = "LOGIN_SWITCH"
+	USER_LOCAL_MODEL        = "USE_LOCAL_MODEL"
+	SD_IMAGE                = "SD_IMAGE"
+	FLEX_MODE               = "FLEX_MODE"
+	EXPOSE_TO_USER          = "EXPOSE_TO_USER"
+	SERVER_NAME             = "SERVER_NAME"
+	DOWNSTREAM              = "DOWNSTREAM"
+	GPU_MEMORY_SIZE         = "GPU_MEMORY_SIZE"
+	COLD_START_CONCURRENCY  = "COLD_START_CONCURRENCY"
+	MODEL_COLD_START_SERIAL = "MODEL_COLD_START_SERIAL"
+	LOG_REMOTE_SERVICE      = "LOG_REMOTE_SERVICE"
+	FC_ACCOUNT_ID           = "FC_ACCOUNT_ID"
+	FC_FUNCTION_NAME        = "FC_FUNCTION_NAME"
+	ENABLE_COLLECT          = "ENABLE_COLLECT"
+	DISABLE_HF_CHECK        = "DISABLE_HF_CHECK"
+	CHECK_MODEL_LOAD        = "CHECK_MODEL_LOAD"
+)
+
+// default value
+const (
+	DefaultSdPort              = "7861"
+	DefaultSdPath              = "/stable-diffusion-webui"
+	DefaultSdPathProxy         = "/mnt/auto/sd"
+	DefaultExtraArgs           = "--api"
+	DefaultSessionExpire       = 3600
+	DefaultLoginSwitch         = "off"       // value: off|on
+	DefaultUseLocalModel       = "yes"       // value: yes|no
+	DefaultFlexMode            = "multiFunc" // value: singleFunc|multiFunc
+	DefaultOssMode             = "local"
+	DefaultOssPath             = "/mnt/oss"
+	DefaultLogService          = "http://server-ai-backend-agwwspzdwb.cn-hangzhou.devsapp.net"
+	DefaultCaPort              = 7860
+	DefaultCpu                 = 8
+	DefaultDisk                = 512
+	DefaultInstanceConcurrency = 1
+	DefaultInstanceType        = "fc.gpu.tesla.1"
+	DefaultMemorySize          = 32768
+	DefaultGpuMemorySize       = 16384
+	DefaultTimeout             = 600
 )
 
 // function http trigger
@@ -92,4 +136,27 @@ const (
 const (
 	LOCAL  = "local"
 	REMOTE = "remote"
+)
+
+type FlexMode int32
+
+const (
+	SingleFunc FlexMode = iota
+	MultiFunc
+)
+
+const (
+	PROXY   = "proxy"
+	AGENT   = "agent"
+	CONTROL = "control"
+)
+
+const (
+	ColdStartConcurrency = 10
+	ModelColdStartSerial = false
+)
+
+const (
+	TrackerKeyStableDiffusionStartup = "stable_diffusion_startup"
+	FcRequestID                      = "x-fc-request-id"
 )

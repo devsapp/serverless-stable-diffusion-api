@@ -9,7 +9,11 @@ import (
 	"sync"
 )
 
-const SESSIONLENGTH = 64
+const (
+	SESSIONLENGTH = 64
+	DefaultUser   = "admin"
+	DefaultPasswd = "123"
+)
 
 var UserManagerGlobal *userManager
 
@@ -40,7 +44,14 @@ func (u *userManager) loadUserFromDb() error {
 	if err != nil {
 		return err
 	}
+	needInit := true
 	for _, data := range datas {
+		if name, ok := data[datastore.KUserName]; ok && name.(string) == DefaultUser {
+			needInit = false
+		}
+		if len(data) != 3 {
+			continue
+		}
 		userName := data[datastore.KUserName].(string)
 		session := data[datastore.KUserSession].(string)
 		expired, _ := strconv.Atoi(data[datastore.KUserSessionValidTime].(string))
@@ -48,6 +59,13 @@ func (u *userManager) loadUserFromDb() error {
 			userName: userName,
 			session:  session,
 			expired:  expired,
+		})
+	}
+	if needInit {
+		defaultEncodePassword, _ := utils.EncryptPassword(DefaultPasswd)
+		u.userStore.Put(DefaultUser, map[string]interface{}{
+			datastore.KUserName:     DefaultUser,
+			datastore.KUserPassword: defaultEncodePassword,
 		})
 	}
 	return nil
@@ -60,7 +78,7 @@ func (u *userManager) VerifyUserValid(userName, password string) (string, int, b
 		return "", 0, false
 	}
 	passwordDb := data[datastore.KUserPassword].(string)
-	if password == passwordDb {
+	if utils.MatchPassword(password, passwordDb) {
 		session := utils.RandStr(SESSIONLENGTH)
 		expired := int(utils.TimestampS() + config.ConfigGlobal.SessionExpire)
 		u.cache.Store(session, &userSession{

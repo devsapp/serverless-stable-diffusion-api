@@ -4,9 +4,11 @@ package datastore
 const (
 	KModelServiceTableName      = "function"
 	KModelServiceKey            = "PRIMARY_KEY"
+	KModelServiceFunctionName   = "FUNCTION"
 	KModelServiceSdModel        = "SD_MODEL"
-	KModelServiceSdVae          = "SD_VAE"
 	KModelServiceEndPoint       = "END_POINT"
+	KModelServerImage           = "IMAGE"
+	KModelServiceMessage        = "MESSAGE"
 	KModelServiceCreateTime     = "FUNC_CREATE_TIME"
 	KModelServiceLastModifyTime = "FUNC_LAST_MODIFY_TIME"
 )
@@ -58,6 +60,7 @@ const (
 	KConfigTableName  = "config"
 	KConfigKey        = "CONFIG_KEY"
 	KConfigVal        = "CONFIG_VAL"
+	KConfigMd5        = "CONFIG_MD5"
 	KConfigVer        = "CONFIG_VERSION"
 	KConfigCreateTime = "CONFIG_CREATE_TIME"
 	KConfigModifyTime = "CONFIG_MODIFY_TIME"

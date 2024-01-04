@@ -282,6 +282,96 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /extra_images:
+    post:
+      summary: image upcaling
+      operationId: extraImages
+      requestBody:
+        description: image upcaling
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExtraImagesRequest'
+      responses:
+        '200':
+          description: image upcaling respone
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitTaskResponse'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /restart:
+    post:
+      summary: restart webui api server
+      operationId: restart
+      responses:
+        "200":
+          description: restart success
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /batch_update_sd_resource:
+    post:
+      summary: update sd function resource by batch, Supports a specified list of functions, or all
+      operationId: BatchUpdateResource
+      requestBody:
+        description: update function resource
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchUpdateSdResourceRequest'
+      responses:
+        "200":
+          description: update success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchUpdateSdResourceResponse"
+        "500":
+          description: update function partial failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchUpdateSdResourceResponse"
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /list/sdapi/functions:
+    get:
+      summary: get sdapi function
+      operationId: listSdFunc
+      responses:
+        "200":
+          description: sd list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListSDFunctionResponse"
+        "500":
+          description: sd list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListSDFunctionResponse"
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
 components:
   schemas:
@@ -329,11 +419,10 @@ components:
     Txt2ImgRequest:
       required:
         - stable_diffusion_model
-        - sd_vae
-        - prompt
       properties:
         stable_diffusion_model:
           type: string
+          minLength: 1
           example: "diffusion_v1"
         sd_vae:
           type: string
@@ -486,8 +575,6 @@ components:
           example: true
         script_args:
           type: array
-          items:
-            type: object
           example: [{ "argKey": "argValue" }]
         sampler_index:
           type: string
@@ -507,10 +594,10 @@ components:
     Img2ImgRequest:
       required:
         - stable_diffusion_model
-        - sd_vae
       properties:
         stable_diffusion_model:
           type: string
+          minLength: 1
           example: "diffusion_v2"
         sd_vae:
           type: string
@@ -671,8 +758,6 @@ components:
           example: false
         script_args:
           type: array
-          items:
-            type: string
           example: ["arg1", "arg2"]
         sampler_index:
           type: string
@@ -740,11 +825,14 @@ components:
       description: one task result, include taskId/images/parameters/info
       required:
         - taskId
-        - images
+        - status
       properties:
         taskId:
           type: string
           example: "task123456"
+        status:
+          type: string
+          example: "waiting|running|succeeded|failed"
         images:
           description: one task image result, len(images)>1 when batch count or batch size > 1
           type: array
@@ -805,6 +893,125 @@ components:
         message:
           type: string
           example: "success"
+    ExtraImagesRequest:
+      required:
+        - resize_mode
+        - image
+      properties:
+        stable_diffusion_model:
+          type: string
+          example: "sd checkpoint"
+        resize_mode:
+          type: integer
+          format: int32
+          example: "0|1"
+        show_extras_results:
+          type: boolean
+          example: "false|true"
+        gfpgan_visibility:
+          type: number
+          format: float
+          example: "0.01"
+        codeformer_visibility:
+          type: number
+          format: float
+          example: "0.01"
+        codeformer_weight:
+          type: number
+          format: float
+          example: "0.01"
+        upscaling_resize:
+          type: number
+          format: float
+          example: "2.0"
+        upscaling_resize_w:
+          type: integer
+          format: int32
+          example: "1024"
+        upscaling_resize_h:
+          type: integer
+          format: int32
+          example: "1024"
+        upscaling_crop:
+          type: boolean
+          example: "true|false"
+        upscaler_1:
+          type: string
+          example: "ScuNET PSNR"
+        upscaler_2:
+          type: string
+          example: "ScuNET PSNR"
+        extras_upscaler_2_visibility:
+          type: number
+          format: float
+          example: "0.02"
+        upscale_first:
+          type: boolean
+          example: "true|false"
+        image:
+          type: string
+          example: "base64|imgpath"
+    BatchUpdateSdResourceRequest:
+      properties:
+        models:
+          type: array
+          items:
+            type: string
+          description: sd models list, not set default all
+        image:
+          type: string
+          description: sd image
+        cpu:
+          type: number
+          format: float
+          description: sd function cpu
+        instanceType:
+          type: string
+          description: fc.gpu.tesla.1:T4, fc.gpu.ampere.1:A10
+        memorySize:
+          type: integer
+          format: int32
+          description:  instance mem size (MB)
+        gpuMemorySize:
+          type: integer
+          format: int32
+          description: GPU Video RAM
+        timeout:
+          type: integer
+          format: int32
+          description: fucntion timeout
+        extraArgs:
+          type: string
+          description: sd start args
+          example: "--api"
+    BatchUpdateSdResourceResponse:
+      properties:
+        status:
+          type: string
+          description: update status val(success\fail)
+          example: "success"
+        failFuncList:
+          type: array
+          items:
+            type: string
+          description: fail function list
+        errMsg:
+          type: string
+          description: fail message
+    ListSDFunctionResponse:
+      properties:
+        status:
+          type: string
+          description: success|fail
+          example: "success"
+        functions:
+          type: array
+          items:
+            type: object
+          description: dynamically creating functions
+        errMsg:
+          type: string
+          description: fail message
     Error:
       required:
         - code

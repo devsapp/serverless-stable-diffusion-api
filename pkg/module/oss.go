@@ -2,11 +2,13 @@ package module
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -18,6 +20,7 @@ type OssOp interface {
 	UploadFileByByte(ossKey string, body []byte) error
 	DownloadFile(ossKey, localFile string) error
 	DeleteFile(ossKey string) error
+	DownloadFileToBase64(ossPath string) (*string, error)
 }
 
 // OssGlobal oss manager
@@ -72,6 +75,23 @@ func (o *OssManagerRemote) DeleteFile(ossKey string) error {
 	return o.bucket.DeleteObject(ossKey)
 }
 
+func (o *OssManagerRemote) DownloadFileToBase64(ossKey string) (*string, error) {
+	// get image from oss
+	body, err := o.bucket.GetObject(ossKey)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := ioutil.ReadAll(body)
+	body.Close()
+	if err != nil {
+		return nil, err
+	}
+	// image to base64
+	imageBase64 := base64.StdEncoding.EncodeToString(data)
+	return &imageBase64, nil
+}
+
 type OssManagerLocal struct {
 }
 
@@ -107,6 +127,20 @@ func (o *OssManagerLocal) DownloadFile(ossKey, localFile string) error {
 }
 func (o *OssManagerLocal) DeleteFile(ossKey string) error {
 	destFile := fmt.Sprintf("%s/%s", config.ConfigGlobal.OssPath, ossKey)
-	_, err := utils.DeleteLocalModelFile(destFile)
+	_, err := utils.DeleteLocalFile(destFile)
 	return err
+}
+
+// DownloadFileToBase64 : support png/jpg/jpeg
+func (o *OssManagerLocal) DownloadFileToBase64(ossKey string) (*string, error) {
+	destFile := fmt.Sprintf("%s/%s", config.ConfigGlobal.OssPath, ossKey)
+	if !utils.FileExists(destFile) {
+		return nil, fmt.Errorf("ossKey:%s not exist", ossKey)
+	}
+	data, err := ioutil.ReadFile(destFile)
+	if err != nil {
+		return nil, err
+	}
+	imageBase64 := base64.StdEncoding.EncodeToString(data)
+	return &imageBase64, nil
 }

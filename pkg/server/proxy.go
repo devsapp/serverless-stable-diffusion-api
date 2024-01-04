@@ -7,7 +7,7 @@ import (
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/handler"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/module"
 	"github.com/gin-gonic/gin"
-	"log"
+	"github.com/sirupsen/logrus"
 	"net"
 	"net/http"
 	"time"
@@ -22,7 +22,7 @@ type ProxyServer struct {
 	configStore    datastore.Datastore
 }
 
-func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, error) {
+func NewProxyServer(port string, dbType datastore.DatastoreType, mode string) (*ProxyServer, error) {
 	// init oss manager
 	if err := module.NewOssManager(); err != nil {
 		return nil, err
@@ -34,6 +34,9 @@ func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, 
 	modelDataStore := tableFactory.NewTable(dbType, datastore.KModelTableName)
 	// init user table
 	userDataStore := tableFactory.NewTable(dbType, datastore.KUserTableName)
+	if err := module.InitUserManager(userDataStore); err != nil {
+		return nil, err
+	}
 	// init config table
 	configDataStore := tableFactory.NewTable(dbType, datastore.KConfigTableName)
 	// init function table
@@ -42,22 +45,33 @@ func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, 
 	if err := module.InitFuncManager(funcDataStore); err != nil {
 		return nil, err
 	}
-
-	if err := module.InitUserManager(userDataStore); err != nil {
-		return nil, err
+	if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
+		// init listen event
+		listenTask := module.NewListenDbTask(config.ConfigGlobal.ListenInterval, taskDataStore, modelDataStore,
+			configDataStore)
+		// add config listen task
+		listenTask.AddTask("configTask", module.ConfigListen, module.ConfigEvent)
 	}
 	// init handler
-	proxyHandler := handler.NewProxyHandler(taskDataStore, modelDataStore, userDataStore, configDataStore)
+	proxyHandler := handler.NewProxyHandler(taskDataStore, modelDataStore, userDataStore,
+		configDataStore, funcDataStore)
 
 	// init router
+	if mode == gin.DebugMode {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
+	router.Use(handler.Stat())
 
 	// auth permission check
 	if config.ConfigGlobal.EnableLogin() {
 		router.Use(handler.ApiAuth())
 	}
 	handler.RegisterHandlers(router, proxyHandler)
+	router.NoRoute(proxyHandler.NoRouterHandler)
 
 	return &ProxyServer{
 		srv: &http.Server{
@@ -75,7 +89,7 @@ func NewProxyServer(port string, dbType datastore.DatastoreType) (*ProxyServer, 
 // Start proxy server
 func (p *ProxyServer) Start() error {
 	if err := p.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("listen: %s\n", err)
+		logrus.Fatalf("listen: %s\n", err)
 		return err
 	}
 	return nil
@@ -83,15 +97,25 @@ func (p *ProxyServer) Start() error {
 
 // Close shutdown proxy server, timeout=shutdownTimeout
 func (p *ProxyServer) Close(shutdownTimeout time.Duration) error {
-	p.userDataStore.Close()
-	p.taskDataStore.Close()
-	p.modelDataStore.Close()
-	p.funcDataStore.Close()
-	p.configStore.Close()
+	if p.userDataStore != nil {
+		p.userDataStore.Close()
+	}
+	if p.taskDataStore != nil {
+		p.taskDataStore.Close()
+	}
+	if p.modelDataStore != nil {
+		p.modelDataStore.Close()
+	}
+	if p.funcDataStore != nil {
+		p.funcDataStore.Close()
+	}
+	if p.configStore != nil {
+		p.configStore.Close()
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := p.srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown: ", err)
+		logrus.Fatal("Server forced to shutdown: ", err)
 		return err
 	}
 	return nil

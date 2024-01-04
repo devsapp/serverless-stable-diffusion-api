@@ -2,20 +2,17 @@ package server
 
 import (
 	"context"
-	"errors"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/handler"
+	"github.com/devsapp/serverless-stable-diffusion-api/pkg/log"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/module"
-	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
 	"github.com/gin-gonic/gin"
-	"log"
+	"github.com/sirupsen/logrus"
 	"net"
 	"net/http"
 	"time"
 )
-
-const SD_START_TIMEOUT = 10 * 60 * 1000 // 10min
 
 type AgentServer struct {
 	srv             *http.Server
@@ -23,59 +20,83 @@ type AgentServer struct {
 	taskDataStore   datastore.Datastore
 	modelDataStore  datastore.Datastore
 	configDataStore datastore.Datastore
+	sdManager       *module.SDManager
 }
 
-func NewAgentServer(port string, dbType datastore.DatastoreType) (*AgentServer, error) {
-	// init oss manager
-	if err := module.NewOssManager(); err != nil {
-		log.Fatal("oss init fail")
-	}
-	tableFactory := datastore.DatastoreFactory{}
-	// init task table
-	taskDataStore := tableFactory.NewTable(dbType, datastore.KTaskTableName)
-	// init model table
-	modelDataStore := tableFactory.NewTable(dbType, datastore.KModelTableName)
-	// init config table
-	configDataStore := tableFactory.NewTable(dbType, datastore.KConfigTableName)
-	// init listen event
-	listenTask := module.NewListenDbTask(config.ConfigGlobal.ListenInterval, taskDataStore, modelDataStore)
-	// add listen model change
-	listenTask.AddTask("modelTask", module.ModelListen, module.ModelChangeEvent)
-	// init handler
-	agentHandler := handler.NewAgentHandler(taskDataStore, modelDataStore, configDataStore, listenTask)
-
-	// update sd config.json
-	if err := module.UpdateSdConfig(); err != nil {
-		log.Fatal("sd config update fail")
-	}
-
+func NewAgentServer(port string, dbType datastore.DatastoreType, mode string) (*AgentServer, error) {
+	agentServer := new(AgentServer)
 	// init router
+	if mode == gin.DebugMode {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
-	handler.RegisterHandlers(router, agentHandler)
+	router.Use(handler.Stat())
+	tableFactory := datastore.DatastoreFactory{}
+	if config.ConfigGlobal.ExposeToUser() {
+		// init func manager
+		if err := module.InitFuncManager(nil); err != nil {
+			return nil, err
+		}
+		agentServer.sdManager = module.NewSDManager(config.ConfigGlobal.GetSDPort())
+		// enable ReverserProxy
+		router.Any("/*path", handler.ReverseProxy)
+	} else {
+		// only api
+		// init function table
+		funcDataStore := tableFactory.NewTable(dbType, datastore.KModelServiceTableName)
+		// init func manager
+		if err := module.InitFuncManager(funcDataStore); err != nil {
+			return nil, err
+		}
+		// init oss manager
+		if err := module.NewOssManager(); err != nil {
+			logrus.Fatal("oss init fail")
+		}
+		// init task table
+		taskDataStore := tableFactory.NewTable(dbType, datastore.KTaskTableName)
+		// init model table
+		modelDataStore := tableFactory.NewTable(dbType, datastore.KModelTableName)
+		// init config table
+		configDataStore := tableFactory.NewTable(dbType, datastore.KConfigTableName)
+		// init listen event
+		listenTask := module.NewListenDbTask(config.ConfigGlobal.ListenInterval, taskDataStore, modelDataStore,
+			configDataStore)
+		// add listen model change
+		listenTask.AddTask("modelTask", module.ModelListen, module.ModelChangeEvent)
+		// init handler
+		agentHandler := handler.NewAgentHandler(taskDataStore, modelDataStore, configDataStore, listenTask)
 
-	// make sure sd started
-	if !utils.PortCheck(config.ConfigGlobal.GetSDPort(), SD_START_TIMEOUT) {
-		log.Fatal("sd not start after 10min")
-		return nil, errors.New("sd not start after 60s")
+		// update sd config.json
+		if !config.ConfigGlobal.ExposeToUser() {
+			if err := module.UpdateSdConfig(configDataStore); err != nil {
+				logrus.Fatal("sd config update fail")
+			}
+		}
+		agentServer.sdManager = module.NewSDManager(config.ConfigGlobal.GetSDPort())
+
+		handler.RegisterHandlers(router, agentHandler)
+		router.NoRoute(agentHandler.NoRouterAgentHandler)
+		agentServer.listenTask = listenTask
+		agentServer.taskDataStore = taskDataStore
+		agentServer.modelDataStore = modelDataStore
+		agentServer.configDataStore = configDataStore
 	}
 
-	return &AgentServer{
-		srv: &http.Server{
-			Addr:    net.JoinHostPort("0.0.0.0", port),
-			Handler: router,
-		},
-		listenTask:      listenTask,
-		taskDataStore:   taskDataStore,
-		modelDataStore:  modelDataStore,
-		configDataStore: configDataStore,
-	}, nil
+	agentServer.srv = &http.Server{
+		Addr:    net.JoinHostPort("0.0.0.0", port),
+		Handler: router,
+	}
+	return agentServer, nil
+
 }
 
 // Start proxy server
 func (p *AgentServer) Start() error {
 	if err := p.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("listen: %s\n", err)
+		logrus.Fatalf("listen: %s\n", err)
 		return err
 	}
 	return nil
@@ -84,15 +105,35 @@ func (p *AgentServer) Start() error {
 // Close shutdown proxy server, timeout=shutdownTimeout
 func (p *AgentServer) Close(shutdownTimeout time.Duration) error {
 	// close listen task
-	p.listenTask.Close()
-	p.taskDataStore.Close()
-	p.modelDataStore.Close()
-	p.configDataStore.Close()
+	if p.listenTask != nil {
+		p.listenTask.Close()
+	}
+	if p.taskDataStore != nil {
+		p.taskDataStore.Close()
+	}
+	if p.modelDataStore != nil {
+		p.modelDataStore.Close()
+	}
+	if p.configDataStore != nil {
+		p.configDataStore.Close()
+	}
+	if p.sdManager != nil {
+		p.sdManager.Close()
+	}
+
+	if log.SDLogInstance != nil {
+		log.SDLogInstance.Close()
+	}
+
+	if module.ProxyGlobal != nil {
+		module.ProxyGlobal.Close()
+	}
+
 	// shutdown server
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := p.srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown: ", err)
+		logrus.Fatal("Server forced to shutdown: ", err)
 		return err
 	}
 	return nil
