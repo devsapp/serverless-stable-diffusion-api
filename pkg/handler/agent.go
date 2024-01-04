@@ -140,7 +140,7 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 		request.OverrideSettings = &overrideSettings
 	}
 	if err := a.updateOverrideSettingsRequest(request.OverrideSettings, username, configVer,
-		request.StableDiffusionModel, *request.SdVae); err != nil {
+		request.StableDiffusionModel, request.SdVae); err != nil {
 		handleError(c, http.StatusInternalServerError, "please check config")
 		return
 	}
@@ -217,7 +217,7 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 		request.OverrideSettings = &overrideSettings
 	}
 	if err := a.updateOverrideSettingsRequest(request.OverrideSettings, username, configVer,
-		request.StableDiffusionModel, *request.SdVae); err != nil {
+		request.StableDiffusionModel, request.SdVae); err != nil {
 		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("update OverrideSettings err=%s", err.Error())
 		handleError(c, http.StatusInternalServerError, "please check config")
 		return
@@ -458,14 +458,18 @@ func (a *AgentHandler) extraImages(user, taskId, path string, body []byte) error
 }
 
 func (a *AgentHandler) updateOverrideSettingsRequest(overrideSettings *map[string]interface{},
-	username, configVersion, sdModel, sdVae string) error {
+	username, configVersion, sdModel string, sdVae *string) error {
 	//if config.ConfigGlobal.GetFlexMode() == config.MultiFunc {
 	//	// remove sd_model_checkpoint and sd_vae
 	//	delete(*overrideSettings, "sd_model_checkpoint")
 	//	(*overrideSettings)["sd_vae"] = sdVae
 	//} else {
 	(*overrideSettings)["sd_model_checkpoint"] = sdModel
-	(*overrideSettings)["sd_vae"] = sdVae
+	if sdVae != nil {
+		(*overrideSettings)["sd_vae"] = sdVae
+	} else {
+		(*overrideSettings)["sd_vae"] = "None"
+	}
 	//}
 	// version == -1 use default
 	if configVersion == "-1" {
