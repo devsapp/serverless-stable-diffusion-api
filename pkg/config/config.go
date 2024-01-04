@@ -229,6 +229,17 @@ func (c *Config) updateFromEnv() {
 	}
 }
 
+// check config valid
+func (c *Config) check() {
+	// ExtraArgs
+	if !strings.Contains(c.ExtraArgs, "--api") {
+		c.ExtraArgs = fmt.Sprintf("%s %s", c.ExtraArgs, "--api")
+	}
+	if !strings.Contains(c.ExtraArgs, "--nowebui") {
+		c.ExtraArgs = fmt.Sprintf("%s %s", c.ExtraArgs, "--nowebui")
+	}
+}
+
 // set default
 func (c *Config) setDefaults() {
 	if c.OtsTimeToAlive == 0 {
@@ -327,6 +338,8 @@ func InitConfig(fn string) error {
 	}
 	// set default
 	ConfigGlobal.setDefaults()
+	// check
+	ConfigGlobal.check()
 
 	// env cover yaml
 	ConfigGlobal.updateFromEnv()

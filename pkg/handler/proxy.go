@@ -556,7 +556,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 	}
 	if config.ConfigGlobal.IsServerTypeMatch(config.PROXY) {
 		// check request valid: sdModel and sdVae exist
-		if existed := p.checkModelExist(request.StableDiffusionModel, *request.SdVae); !existed {
+		if existed := p.checkModelExist(request.StableDiffusionModel); !existed {
 			handleError(c, http.StatusNotFound, "model not found, please check request")
 			return
 		}
@@ -693,7 +693,7 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 	}
 	if config.ConfigGlobal.IsServerTypeMatch(config.PROXY) {
 		// check request valid: sdModel and sdVae exist
-		if existed := p.checkModelExist(request.StableDiffusionModel, *request.SdVae); !existed {
+		if existed := p.checkModelExist(request.StableDiffusionModel); !existed {
 			handleError(c, http.StatusNotFound, "model not found, please check request")
 			return
 		}
@@ -871,12 +871,12 @@ func (p *ProxyHandler) getTaskResult(taskId string) (*models.TaskResultResponse,
 	return result, nil
 }
 
-func (p *ProxyHandler) checkModelExist(sdModel, sdVae string) bool {
+func (p *ProxyHandler) checkModelExist(sdModel string) bool {
 	models := [][]string{{config.SD_MODEL, sdModel}}
-	// remove sdVae = None || Automatic
-	if sdVae != "None" && sdVae != "Automatic" {
-		models = append(models, []string{config.MODEL_SD_VAE, sdVae})
-	}
+	//// remove sdVae = None || Automatic
+	//if sdVae != "None" && sdVae != "Automatic" {
+	//	models = append(models, []string{config.MODEL_SD_VAE, sdVae})
+	//}
 	for _, model := range models {
 		// check local existed
 		switch model[0] {
@@ -893,19 +893,19 @@ func (p *ProxyHandler) checkModelExist(sdModel, sdVae string) bool {
 				}
 				return false
 			}
-		case config.MODEL_SD_VAE:
-			sdVaePath := fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "VAE", sdVae)
-			if !utils.FileExists(sdVaePath) {
-				// list check image models
-				path := fmt.Sprintf("%s/models/%s", config.ConfigGlobal.SdPath, "VAE")
-				tmp := utils.ListFile(path)
-				for _, one := range tmp {
-					if one == sdVae {
-						return true
-					}
-				}
-				return false
-			}
+			//case config.MODEL_SD_VAE:
+			//	sdVaePath := fmt.Sprintf("%s/models/%s/%s", config.ConfigGlobal.SdPath, "VAE", sdVae)
+			//	if !utils.FileExists(sdVaePath) {
+			//		// list check image models
+			//		path := fmt.Sprintf("%s/models/%s", config.ConfigGlobal.SdPath, "VAE")
+			//		tmp := utils.ListFile(path)
+			//		for _, one := range tmp {
+			//			if one == sdVae {
+			//				return true
+			//			}
+			//		}
+			//		return false
+			//	}
 		}
 	}
 	return true
@@ -1031,7 +1031,7 @@ func (p *ProxyHandler) NoRouterHandler(c *gin.Context) {
 	if config.ConfigGlobal.IsServerTypeMatch(config.PROXY) {
 		// check request valid: sdModel and sdVae exist
 		if sdModel != "" {
-			if existed := p.checkModelExist(sdModel, "None"); !existed {
+			if existed := p.checkModelExist(sdModel); !existed {
 				handleError(c, http.StatusNotFound, "model not found, please check request")
 				return
 			}
