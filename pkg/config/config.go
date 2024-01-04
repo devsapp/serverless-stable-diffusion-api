@@ -338,6 +338,8 @@ func InitConfig(fn string) error {
 	}
 	// set default
 	ConfigGlobal.setDefaults()
+	// check
+	ConfigGlobal.check()
 
 	// env cover yaml
 	ConfigGlobal.updateFromEnv()
