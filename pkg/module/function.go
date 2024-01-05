@@ -8,6 +8,9 @@ import (
 	fc3 "github.com/alibabacloud-go/fc-20230330/client"
 	fc "github.com/alibabacloud-go/fc-open-20210406/v2/client"
 	fcService "github.com/alibabacloud-go/tea-utils/v2/service"
+	gr "github.com/awesome-fc/golang-runtime"
+	"github.com/devsapp/goutils/aigc/project"
+	fcUtils "github.com/devsapp/goutils/fc"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
@@ -375,6 +378,57 @@ func (f *FuncManager) putFunc(key, functionName, sdModel, endpoint string) {
 	})
 }
 
+func (f *FuncManager) GetSd() *fcUtils.Function {
+	return f.ListFunction().Filemgr
+}
+
+func (f *FuncManager) GetFileMgr() *fcUtils.Function {
+	return f.ListFunction().Filemgr
+}
+
+func (f *FuncManager) ListFunction() *project.T {
+	ctx := &gr.FCContext{
+		Credentials: gr.Credentials{
+			AccessKeyID:     config.ConfigGlobal.AccessKeyId,
+			AccessKeySecret: config.ConfigGlobal.AccessKeySecret,
+			SecurityToken:   config.ConfigGlobal.AccessKeyToken,
+		},
+		Region:    config.ConfigGlobal.Region,
+		AccountID: config.ConfigGlobal.AccountId,
+		Service: gr.ServiceMeta{
+			ServiceName: config.ConfigGlobal.ServiceName,
+		},
+		Function: gr.FunctionMeta{
+			Name: config.ConfigGlobal.FunctionName,
+		},
+	}
+	logrus.Info(ctx)
+	functions := project.Get(ctx)
+	return &functions
+}
+
+func GetHttpTrigger(functionName string) string {
+	if isFc3() {
+		if result, err := FuncManagerGlobal.fc3Client.ListTriggers(&functionName, new(fc3.ListTriggersRequest)); err == nil {
+			for _, trigger := range result.Body.Triggers {
+				if trigger.HttpTrigger != nil {
+					return *trigger.HttpTrigger.UrlInternet
+				}
+			}
+		}
+	} else {
+		if result, err := FuncManagerGlobal.fcClient.ListTriggers(&config.ConfigGlobal.ServiceName,
+			&functionName, new(fc.ListTriggersRequest)); err == nil {
+			for _, trigger := range result.Body.Triggers {
+				if trigger.UrlInternet != nil {
+					return *trigger.UrlInternet
+				}
+			}
+		}
+	}
+	return ""
+}
+
 // ---------fc2.0----------
 // create fc function
 func (f *FuncManager) createFCFunction(serviceName, functionName string,
@@ -400,7 +454,7 @@ func (f *FuncManager) createFCFunction(serviceName, functionName string,
 
 // get create function request
 func getCreateFuncRequest(functionName string, env map[string]*string) *fc.CreateFunctionRequest {
-	return &fc.CreateFunctionRequest{
+	defaultReq := &fc.CreateFunctionRequest{
 		FunctionName:         utils.String(functionName),
 		CaPort:               utils.Int32(config.ConfigGlobal.CAPort),
 		Cpu:                  utils.Float32(config.ConfigGlobal.CPU),
@@ -419,6 +473,24 @@ func getCreateFuncRequest(functionName string, env map[string]*string) *fc.Creat
 			WebServerMode:    utils.Bool(true),
 		},
 	}
+	if sd := FuncManagerGlobal.GetSd(); sd != nil {
+		if config.ConfigGlobal.Image == "" {
+			defaultReq.CustomContainerConfig.Image = sd.CustomContainerConfig.Image
+		}
+		defaultReq.CustomContainerConfig.Command = func() *string {
+			if sd.CustomContainerConfig.Entrypoint != nil && len(sd.CustomContainerConfig.Entrypoint) > 0 {
+				return sd.CustomContainerConfig.Entrypoint[0]
+			}
+			return utils.String("")
+		}()
+		defaultReq.CustomContainerConfig.Args = func() *string {
+			if sd.CustomContainerConfig.Command != nil && len(sd.CustomContainerConfig.Command) > 0 {
+				return sd.CustomContainerConfig.Command[0]
+			}
+			return utils.String("")
+		}()
+	}
+	return defaultReq
 }
 
 // get trigger request
@@ -459,7 +531,7 @@ func (f *FuncManager) createFc3Function(functionName string,
 // fc3.0 get create function request
 func (f *FuncManager) getCreateFuncRequestFc3(functionName string, env map[string]*string) *fc3.CreateFunctionRequest {
 	// get current function
-	function := f.GetFcFunc(config.ConfigGlobal.ServerName)
+	function := f.GetFcFunc(config.ConfigGlobal.FunctionName)
 	if function == nil {
 		return nil
 	}
@@ -487,6 +559,13 @@ func (f *FuncManager) getCreateFuncRequestFc3(functionName string, env map[strin
 		VpcConfig:      curFunction.Body.VpcConfig,
 		NasConfig:      curFunction.Body.NasConfig,
 		OssMountConfig: curFunction.Body.OssMountConfig,
+	}
+	if sd := FuncManagerGlobal.GetSd(); sd != nil {
+		if config.ConfigGlobal.Image == "" {
+			input.CustomContainerConfig.Image = sd.CustomContainerConfig.Image
+		}
+		input.CustomContainerConfig.Entrypoint = sd.CustomContainerConfig.Entrypoint
+		input.CustomContainerConfig.Command = sd.CustomContainerConfig.Command
 	}
 	return &fc3.CreateFunctionRequest{
 		Request: input,

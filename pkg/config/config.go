@@ -76,6 +76,7 @@ type ConfigEnv struct {
 	AccessKeyToken       string
 	Region               string
 	ServiceName          string
+	FunctionName         string
 	ColdStartConcurrency int32
 	ModelColdStartSerial bool
 }
@@ -316,6 +317,7 @@ func InitConfig(fn string) error {
 	configEnv.AccessKeyToken = os.Getenv(ACCESS_KET_TOKEN)
 	configEnv.Region = os.Getenv(REGION)
 	configEnv.ServiceName = os.Getenv(SERVICE_NAME)
+	configEnv.FunctionName = os.Getenv(FC_FUNCTION_NAME)
 	// check valid
 	for _, val := range []string{configEnv.AccountId, configEnv.AccessKeyId,
 		configEnv.AccessKeySecret, configEnv.Region} {
