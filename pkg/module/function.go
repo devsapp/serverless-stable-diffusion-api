@@ -379,7 +379,7 @@ func (f *FuncManager) putFunc(key, functionName, sdModel, endpoint string) {
 }
 
 func (f *FuncManager) GetSd() *fcUtils.Function {
-	return f.ListFunction().Filemgr
+	return f.ListFunction().StableDiffusion
 }
 
 func (f *FuncManager) GetFileMgr() *fcUtils.Function {
@@ -402,7 +402,6 @@ func (f *FuncManager) ListFunction() *project.T {
 			Name: config.ConfigGlobal.FunctionName,
 		},
 	}
-	logrus.Info(ctx)
 	functions := project.Get(ctx)
 	return &functions
 }
