@@ -239,6 +239,9 @@ func (c *Config) check() {
 	if !strings.Contains(c.ExtraArgs, "--nowebui") {
 		c.ExtraArgs = fmt.Sprintf("%s %s", c.ExtraArgs, "--nowebui")
 	}
+	if strings.Contains(c.ExtraArgs, "--api-auth") {
+		c.ExtraArgs = strings.ReplaceAll(c.ExtraArgs, "--api-auth", "")
+	}
 }
 
 // set default

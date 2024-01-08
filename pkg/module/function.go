@@ -31,13 +31,16 @@ type SdModels struct {
 
 // FuncResource Fc resource
 type FuncResource struct {
-	Image         string             `json:"image"`
-	CPU           float32            `json:"cpu"`
-	GpuMemorySize int32              `json:"gpuMemorySize"`
-	InstanceType  string             `json:"InstanceType"`
-	MemorySize    int32              `json:"memorySize"`
-	Timeout       int32              `json:"timeout"`
-	Env           map[string]*string `json:"env"`
+	Image          string                  `json:"image"`
+	CPU            float32                 `json:"cpu"`
+	GpuMemorySize  int32                   `json:"gpuMemorySize"`
+	InstanceType   string                  `json:"InstanceType"`
+	MemorySize     int32                   `json:"memorySize"`
+	Timeout        int32                   `json:"timeout"`
+	Env            map[string]*string      `json:"env"`
+	VpcConfig      *map[string]interface{} `json:"vpcConfig"`
+	NasConfig      *map[string]interface{} `json:"nasConfig"`
+	OssMountConfig *map[string]interface{} `json:"ossMountConfig"`
 }
 
 var FuncManagerGlobal *FuncManager
@@ -205,12 +208,7 @@ func (f *FuncManager) UpdateFunctionResource(resources map[string]*FuncResource)
 	for key, resource := range resources {
 		functionName := GetFunctionName(key)
 		if isFc3() {
-			if _, err := f.fc3Client.UpdateFunction(&functionName,
-				new(fc3.UpdateFunctionRequest).SetRequest(new(fc3.UpdateFunctionInput).SetRuntime("custom-container").
-					SetMemorySize(resource.MemorySize).SetCpu(resource.CPU).SetGpuConfig(new(fc3.GPUConfig).
-					SetGpuType(resource.InstanceType).SetGpuMemorySize(resource.GpuMemorySize)).
-					SetTimeout(resource.Timeout).SetCustomContainerConfig(new(fc3.CustomContainerConfig).
-					SetImage(resource.Image)).SetEnvironmentVariables(resource.Env))); err != nil {
+			if _, err := f.fc3Client.UpdateFunction(&functionName, getFC3UpdateFunctionRequest(resource)); err != nil {
 				fail = append(fail, functionName)
 				errs = append(errs, err.Error())
 
@@ -232,6 +230,33 @@ func (f *FuncManager) UpdateFunctionResource(resources map[string]*FuncResource)
 		}
 	}
 	return success, fail, errs
+}
+
+func getFC3UpdateFunctionRequest(resource *FuncResource) *fc3.UpdateFunctionRequest {
+	req := new(fc3.UpdateFunctionInput).SetRuntime("custom-container").
+		SetMemorySize(resource.MemorySize).SetCpu(resource.CPU).SetGpuConfig(new(fc3.GPUConfig).
+		SetGpuType(resource.InstanceType).SetGpuMemorySize(resource.GpuMemorySize)).
+		SetTimeout(resource.Timeout).SetCustomContainerConfig(new(fc3.CustomContainerConfig).
+		SetImage(resource.Image)).SetEnvironmentVariables(resource.Env)
+	if resource.VpcConfig != nil {
+		vpcConfig := &fc3.VPCConfig{}
+		if err := utils.MapToStruct(*resource.VpcConfig, vpcConfig); err == nil {
+			req.SetVpcConfig(vpcConfig)
+		}
+	}
+	if resource.NasConfig != nil {
+		nasConfig := &fc3.NASConfig{}
+		if err := utils.MapToStruct(*resource.NasConfig, nasConfig); err == nil {
+			req.SetNasConfig(nasConfig)
+		}
+	}
+	if resource.OssMountConfig != nil {
+		ossConfig := &fc3.OSSMountConfig{}
+		if err := utils.MapToStruct(*resource.OssMountConfig, ossConfig); err == nil {
+			req.SetOssMountConfig(ossConfig)
+		}
+	}
+	return new(fc3.UpdateFunctionRequest).SetRequest(req)
 }
 
 // get endpoint from cache
