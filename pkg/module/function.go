@@ -15,6 +15,7 @@ import (
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
 	"github.com/sirupsen/logrus"
+	"strings"
 	"sync"
 	"time"
 )
@@ -56,6 +57,7 @@ type FuncManager struct {
 	fc3Client          *fc3.Client
 	lock               sync.RWMutex
 	lastInvokeEndpoint string
+	prefix             string
 }
 
 func isFc3() bool {
@@ -69,6 +71,10 @@ func InitFuncManager(funcStore datastore.Datastore) error {
 	FuncManagerGlobal = &FuncManager{
 		endpoints: make(map[string][]string),
 		funcStore: funcStore,
+	}
+	// extra prefix
+	if parts := strings.Split(config.ConfigGlobal.FunctionName, project.PrefixDelimiter); len(parts) >= 2 {
+		FuncManagerGlobal.prefix = fmt.Sprintf("%s%s", parts[0], project.PrefixDelimiter)
 	}
 	var err error
 	if isFc3() {
@@ -616,7 +622,7 @@ func getHttpTriggerFc3() *fc3.CreateTriggerRequest {
 
 // GetFunctionName hash key, avoid generating invalid characters
 func GetFunctionName(key string) string {
-	return fmt.Sprintf("sd_%s", utils.Hash(key))
+	return fmt.Sprintf("%ssd_%s", FuncManagerGlobal.prefix, utils.Hash(key))
 }
 
 func getEnv(sdModel string) map[string]*string {

@@ -872,6 +872,10 @@ func (p *ProxyHandler) getTaskResult(taskId string) (*models.TaskResultResponse,
 }
 
 func (p *ProxyHandler) checkModelExist(sdModel string) bool {
+	// mount nas && check
+	if !utils.FileExists(config.ConfigGlobal.SdPath) {
+		return true
+	}
 	models := [][]string{{config.SD_MODEL, sdModel}}
 	//// remove sdVae = None || Automatic
 	//if sdVae != "None" && sdVae != "Automatic" {
