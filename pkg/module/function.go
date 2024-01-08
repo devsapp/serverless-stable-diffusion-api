@@ -8,6 +8,9 @@ import (
 	fc3 "github.com/alibabacloud-go/fc-20230330/client"
 	fc "github.com/alibabacloud-go/fc-open-20210406/v2/client"
 	fcService "github.com/alibabacloud-go/tea-utils/v2/service"
+	gr "github.com/awesome-fc/golang-runtime"
+	"github.com/devsapp/goutils/aigc/project"
+	fcUtils "github.com/devsapp/goutils/fc"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/config"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
@@ -28,13 +31,16 @@ type SdModels struct {
 
 // FuncResource Fc resource
 type FuncResource struct {
-	Image         string             `json:"image"`
-	CPU           float32            `json:"cpu"`
-	GpuMemorySize int32              `json:"gpuMemorySize"`
-	InstanceType  string             `json:"InstanceType"`
-	MemorySize    int32              `json:"memorySize"`
-	Timeout       int32              `json:"timeout"`
-	Env           map[string]*string `json:"env"`
+	Image          string                  `json:"image"`
+	CPU            float32                 `json:"cpu"`
+	GpuMemorySize  int32                   `json:"gpuMemorySize"`
+	InstanceType   string                  `json:"InstanceType"`
+	MemorySize     int32                   `json:"memorySize"`
+	Timeout        int32                   `json:"timeout"`
+	Env            map[string]*string      `json:"env"`
+	VpcConfig      *map[string]interface{} `json:"vpcConfig"`
+	NasConfig      *map[string]interface{} `json:"nasConfig"`
+	OssMountConfig *map[string]interface{} `json:"ossMountConfig"`
 }
 
 var FuncManagerGlobal *FuncManager
@@ -202,12 +208,7 @@ func (f *FuncManager) UpdateFunctionResource(resources map[string]*FuncResource)
 	for key, resource := range resources {
 		functionName := GetFunctionName(key)
 		if isFc3() {
-			if _, err := f.fc3Client.UpdateFunction(&functionName,
-				new(fc3.UpdateFunctionRequest).SetRequest(new(fc3.UpdateFunctionInput).SetRuntime("custom-container").
-					SetMemorySize(resource.MemorySize).SetCpu(resource.CPU).SetGpuConfig(new(fc3.GPUConfig).
-					SetGpuType(resource.InstanceType).SetGpuMemorySize(resource.GpuMemorySize)).
-					SetTimeout(resource.Timeout).SetCustomContainerConfig(new(fc3.CustomContainerConfig).
-					SetImage(resource.Image)).SetEnvironmentVariables(resource.Env))); err != nil {
+			if _, err := f.fc3Client.UpdateFunction(&functionName, getFC3UpdateFunctionRequest(resource)); err != nil {
 				fail = append(fail, functionName)
 				errs = append(errs, err.Error())
 
@@ -229,6 +230,33 @@ func (f *FuncManager) UpdateFunctionResource(resources map[string]*FuncResource)
 		}
 	}
 	return success, fail, errs
+}
+
+func getFC3UpdateFunctionRequest(resource *FuncResource) *fc3.UpdateFunctionRequest {
+	req := new(fc3.UpdateFunctionInput).SetRuntime("custom-container").
+		SetMemorySize(resource.MemorySize).SetCpu(resource.CPU).SetGpuConfig(new(fc3.GPUConfig).
+		SetGpuType(resource.InstanceType).SetGpuMemorySize(resource.GpuMemorySize)).
+		SetTimeout(resource.Timeout).SetCustomContainerConfig(new(fc3.CustomContainerConfig).
+		SetImage(resource.Image)).SetEnvironmentVariables(resource.Env)
+	if resource.VpcConfig != nil {
+		vpcConfig := &fc3.VPCConfig{}
+		if err := utils.MapToStruct(*resource.VpcConfig, vpcConfig); err == nil {
+			req.SetVpcConfig(vpcConfig)
+		}
+	}
+	if resource.NasConfig != nil {
+		nasConfig := &fc3.NASConfig{}
+		if err := utils.MapToStruct(*resource.NasConfig, nasConfig); err == nil {
+			req.SetNasConfig(nasConfig)
+		}
+	}
+	if resource.OssMountConfig != nil {
+		ossConfig := &fc3.OSSMountConfig{}
+		if err := utils.MapToStruct(*resource.OssMountConfig, ossConfig); err == nil {
+			req.SetOssMountConfig(ossConfig)
+		}
+	}
+	return new(fc3.UpdateFunctionRequest).SetRequest(req)
 }
 
 // get endpoint from cache
@@ -375,6 +403,56 @@ func (f *FuncManager) putFunc(key, functionName, sdModel, endpoint string) {
 	})
 }
 
+func (f *FuncManager) GetSd() *fcUtils.Function {
+	return f.ListFunction().StableDiffusion
+}
+
+func (f *FuncManager) GetFileMgr() *fcUtils.Function {
+	return f.ListFunction().Filemgr
+}
+
+func (f *FuncManager) ListFunction() *project.T {
+	ctx := &gr.FCContext{
+		Credentials: gr.Credentials{
+			AccessKeyID:     config.ConfigGlobal.AccessKeyId,
+			AccessKeySecret: config.ConfigGlobal.AccessKeySecret,
+			SecurityToken:   config.ConfigGlobal.AccessKeyToken,
+		},
+		Region:    config.ConfigGlobal.Region,
+		AccountID: config.ConfigGlobal.AccountId,
+		Service: gr.ServiceMeta{
+			ServiceName: config.ConfigGlobal.ServiceName,
+		},
+		Function: gr.FunctionMeta{
+			Name: config.ConfigGlobal.FunctionName,
+		},
+	}
+	functions := project.Get(ctx)
+	return &functions
+}
+
+func GetHttpTrigger(functionName string) string {
+	if isFc3() {
+		if result, err := FuncManagerGlobal.fc3Client.ListTriggers(&functionName, new(fc3.ListTriggersRequest)); err == nil {
+			for _, trigger := range result.Body.Triggers {
+				if trigger.HttpTrigger != nil {
+					return *trigger.HttpTrigger.UrlInternet
+				}
+			}
+		}
+	} else {
+		if result, err := FuncManagerGlobal.fcClient.ListTriggers(&config.ConfigGlobal.ServiceName,
+			&functionName, new(fc.ListTriggersRequest)); err == nil {
+			for _, trigger := range result.Body.Triggers {
+				if trigger.UrlInternet != nil {
+					return *trigger.UrlInternet
+				}
+			}
+		}
+	}
+	return ""
+}
+
 // ---------fc2.0----------
 // create fc function
 func (f *FuncManager) createFCFunction(serviceName, functionName string,
@@ -400,7 +478,7 @@ func (f *FuncManager) createFCFunction(serviceName, functionName string,
 
 // get create function request
 func getCreateFuncRequest(functionName string, env map[string]*string) *fc.CreateFunctionRequest {
-	return &fc.CreateFunctionRequest{
+	defaultReq := &fc.CreateFunctionRequest{
 		FunctionName:         utils.String(functionName),
 		CaPort:               utils.Int32(config.ConfigGlobal.CAPort),
 		Cpu:                  utils.Float32(config.ConfigGlobal.CPU),
@@ -419,6 +497,24 @@ func getCreateFuncRequest(functionName string, env map[string]*string) *fc.Creat
 			WebServerMode:    utils.Bool(true),
 		},
 	}
+	if sd := FuncManagerGlobal.GetSd(); sd != nil {
+		if config.ConfigGlobal.Image == "" {
+			defaultReq.CustomContainerConfig.Image = sd.CustomContainerConfig.Image
+		}
+		defaultReq.CustomContainerConfig.Command = func() *string {
+			if sd.CustomContainerConfig.Entrypoint != nil && len(sd.CustomContainerConfig.Entrypoint) > 0 {
+				return sd.CustomContainerConfig.Entrypoint[0]
+			}
+			return utils.String("")
+		}()
+		defaultReq.CustomContainerConfig.Args = func() *string {
+			if sd.CustomContainerConfig.Command != nil && len(sd.CustomContainerConfig.Command) > 0 {
+				return sd.CustomContainerConfig.Command[0]
+			}
+			return utils.String("")
+		}()
+	}
+	return defaultReq
 }
 
 // get trigger request
@@ -459,7 +555,7 @@ func (f *FuncManager) createFc3Function(functionName string,
 // fc3.0 get create function request
 func (f *FuncManager) getCreateFuncRequestFc3(functionName string, env map[string]*string) *fc3.CreateFunctionRequest {
 	// get current function
-	function := f.GetFcFunc(config.ConfigGlobal.ServerName)
+	function := f.GetFcFunc(config.ConfigGlobal.FunctionName)
 	if function == nil {
 		return nil
 	}
@@ -487,6 +583,13 @@ func (f *FuncManager) getCreateFuncRequestFc3(functionName string, env map[strin
 		VpcConfig:      curFunction.Body.VpcConfig,
 		NasConfig:      curFunction.Body.NasConfig,
 		OssMountConfig: curFunction.Body.OssMountConfig,
+	}
+	if sd := FuncManagerGlobal.GetSd(); sd != nil {
+		if config.ConfigGlobal.Image == "" {
+			input.CustomContainerConfig.Image = sd.CustomContainerConfig.Image
+		}
+		input.CustomContainerConfig.Entrypoint = sd.CustomContainerConfig.Entrypoint
+		input.CustomContainerConfig.Command = sd.CustomContainerConfig.Command
 	}
 	return &fc3.CreateFunctionRequest{
 		Request: input,

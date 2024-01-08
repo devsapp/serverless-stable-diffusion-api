@@ -984,6 +984,15 @@ components:
           type: string
           description: sd start args
           example: "--api"
+        vpcConfig:
+          type: object
+          description: "vpc config"
+        nasConfig:
+          type: object
+          description: "nas config"
+        ossMountConfig:
+          type: object
+          description: "oss config"
     BatchUpdateSdResourceResponse:
       properties:
         status:

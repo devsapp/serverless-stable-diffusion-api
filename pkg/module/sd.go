@@ -59,13 +59,12 @@ func (s *SDManager) getEnv() []string {
 	env := make([]string, 0)
 	fileMgrToken := ""
 	fileMgrEndpoint := ""
-	fileMgrName := "admin"
-	if adminEnv := FuncManagerGlobal.GetFcFuncEnv(fileMgrName); adminEnv != nil {
-		if token := (*adminEnv)["TOKEN"]; token != nil {
+	if fileMgr := FuncManagerGlobal.GetFileMgr(); fileMgr != nil && fileMgr.EnvironmentVariables != nil {
+		adminEnv := fileMgr.EnvironmentVariables
+		if token := adminEnv["TOKEN"]; token != nil {
 			fileMgrToken = *token
 		}
-		fileMgrEndpoint = fmt.Sprintf("http://%s.%s.%s.%s.fc.devsapp.net", fileMgrName,
-			config.ConfigGlobal.ServiceName, config.ConfigGlobal.AccountId, config.ConfigGlobal.Region)
+		fileMgrEndpoint = GetHttpTrigger(*fileMgr.FunctionName)
 	}
 	env = append(
 		os.Environ(),

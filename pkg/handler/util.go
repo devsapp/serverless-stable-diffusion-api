@@ -328,6 +328,18 @@ func updateFuncResource(request *models.BatchUpdateSdResourceRequest,
 		res.Timeout = *request.Timeout
 		isDiff = true
 	}
+	if request.VpcConfig != nil {
+		res.VpcConfig = request.VpcConfig
+		isDiff = true
+	}
+	if request.NasConfig != nil {
+		res.NasConfig = request.NasConfig
+		isDiff = true
+	}
+	if request.OssMountConfig != nil {
+		res.OssMountConfig = request.OssMountConfig
+		isDiff = true
+	}
 	if isDiff {
 		return res, nil
 	} else {

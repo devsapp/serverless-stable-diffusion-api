@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/sirupsen/logrus"
@@ -166,4 +167,19 @@ func IsSame(key string, a, b interface{}) bool {
 		logrus.Fatal("type not support")
 	}
 	return true
+}
+
+// MapToStruct map to struct
+func MapToStruct(m map[string]interface{}, s interface{}) error {
+	jsonData, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+	logrus.Info(string(jsonData))
+	err = json.Unmarshal(jsonData, s)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
