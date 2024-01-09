@@ -303,6 +303,15 @@ func updateFuncResource(request *models.BatchUpdateSdResourceRequest,
 		res.CPU = *request.Cpu
 		isDiff = true
 	}
+	// env
+	if request.Env != nil {
+		if res.Env == nil {
+			res.Env = make(map[string]*string)
+		}
+		for key, val := range *request.Env {
+			res.Env[key] = utils.String(val.(string))
+		}
+	}
 	// extraArgs
 	if request.ExtraArgs != nil && *request.ExtraArgs != "" && *request.ExtraArgs != *res.Env["EXTRA_ARGS"] {
 		res.Env["EXTRA_ARGS"] = request.ExtraArgs
