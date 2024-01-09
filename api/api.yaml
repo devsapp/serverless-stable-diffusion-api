@@ -993,6 +993,9 @@ components:
         ossMountConfig:
           type: object
           description: "oss config"
+        env:
+          type: object
+          description: "sd env"
     BatchUpdateSdResourceResponse:
       properties:
         status:
