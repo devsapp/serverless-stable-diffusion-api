@@ -93,7 +93,7 @@ func InitFuncManager(funcStore datastore.Datastore) error {
 	if funcStore != nil {
 		// load func endpoint to cache
 		FuncManagerGlobal.loadFunc()
-		FuncManagerGlobal.checkDbAndFcMatch()
+		//FuncManagerGlobal.checkDbAndFcMatch()
 	}
 	return nil
 }
@@ -103,8 +103,10 @@ func (f *FuncManager) checkDbAndFcMatch() {
 	for sdModel, _ := range f.endpoints {
 		functionName := GetFunctionName(sdModel)
 		if f.GetFcFunc(functionName) == nil {
-			logrus.Errorf("sdModel:%s function in db, not in FC, please delete ots table fucntion key=%s",
+			logrus.Errorf("sdModel:%s function in db, not in FC, auto delete ots table fucntion key=%s",
 				sdModel, sdModel)
+			// function in db not in FC
+			f.funcStore.Delete(sdModel)
 		}
 	}
 }
@@ -374,6 +376,16 @@ func (f *FuncManager) loadFunc() {
 		datastore.KModelServiceSdModel, datastore.KModelServerImage})
 	for _, data := range funcAll {
 		key := data[datastore.KModelServiceKey].(string)
+		sdModel := data[datastore.KModelServiceSdModel].(string)
+		// check fc && db match
+		functionName := GetFunctionName(sdModel)
+		if f.GetFcFunc(functionName) == nil {
+			logrus.Errorf("sdModel:%s function in db, not in FC, auto delete ots table fucntion key=%s",
+				sdModel, sdModel)
+			// function in db not in FC， del ots data
+			f.funcStore.Delete(sdModel)
+			continue
+		}
 		//image := data[datastore.KModelServerImage].(string)
 		//if image != "" && config.ConfigGlobal.Image != "" &&
 		//	image != config.ConfigGlobal.Image {
@@ -392,7 +404,6 @@ func (f *FuncManager) loadFunc() {
 		if f.lastInvokeEndpoint == "" {
 			f.lastInvokeEndpoint = endpoint
 		}
-		sdModel := data[datastore.KModelServiceSdModel].(string)
 		f.endpoints[key] = []string{endpoint, sdModel}
 	}
 }
