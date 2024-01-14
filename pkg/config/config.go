@@ -243,7 +243,7 @@ func (c *Config) check() error {
 	if strings.Contains(c.ExtraArgs, "--api-auth") {
 		c.ExtraArgs = strings.ReplaceAll(c.ExtraArgs, "--api-auth", "")
 	}
-	if c.OssMode == REMOTE {
+	if (c.ServerName == CONTROL || c.ServerName == AGENT) && c.OssMode == REMOTE {
 		if c.Bucket == "" || c.OssEndpoint == "" {
 			logrus.Error("oss remote mode need set oss bucket and endpoint, please check it")
 			return errors.New("oss remote mode need set oss bucket and endpoint, please check it")
