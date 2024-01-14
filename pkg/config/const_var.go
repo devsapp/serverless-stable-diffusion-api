@@ -105,7 +105,6 @@ const (
 	DefaultLoginSwitch         = "off"       // value: off|on
 	DefaultUseLocalModel       = "yes"       // value: yes|no
 	DefaultFlexMode            = "multiFunc" // value: singleFunc|multiFunc
-	DefaultOssMode             = "local"
 	DefaultOssPath             = "/mnt/oss"
 	DefaultLogService          = "http://server-ai-backend-agwwspzdwb.cn-hangzhou.devsapp.net"
 	DefaultCaPort              = 7860
@@ -116,6 +115,7 @@ const (
 	DefaultMemorySize          = 32768
 	DefaultGpuMemorySize       = 16384
 	DefaultTimeout             = 600
+	DefaultOssMode             = REMOTE
 )
 
 // function http trigger

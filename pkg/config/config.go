@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
@@ -231,7 +232,7 @@ func (c *Config) updateFromEnv() {
 }
 
 // check config valid
-func (c *Config) check() {
+func (c *Config) check() error {
 	// ExtraArgs
 	if !strings.Contains(c.ExtraArgs, "--api") {
 		c.ExtraArgs = fmt.Sprintf("%s %s", c.ExtraArgs, "--api")
@@ -242,6 +243,13 @@ func (c *Config) check() {
 	if strings.Contains(c.ExtraArgs, "--api-auth") {
 		c.ExtraArgs = strings.ReplaceAll(c.ExtraArgs, "--api-auth", "")
 	}
+	if (c.ServerName == CONTROL || c.ServerName == AGENT) && c.OssMode == REMOTE {
+		if c.Bucket == "" || c.OssEndpoint == "" {
+			logrus.Error("oss remote mode need set oss bucket and endpoint, please check it")
+			return errors.New("oss remote mode need set oss bucket and endpoint, please check it")
+		}
+	}
+	return nil
 }
 
 // set default
@@ -343,13 +351,15 @@ func InitConfig(fn string) error {
 	}
 	// set default
 	ConfigGlobal.setDefaults()
-	// check
-	ConfigGlobal.check()
 
 	// env cover yaml
 	ConfigGlobal.updateFromEnv()
 	if ConfigGlobal.GetFlexMode() == MultiFunc && ConfigGlobal.ServerName == PROXY && ConfigGlobal.Downstream == "" {
 		return errors.New("proxy need set downstream")
+	}
+	// check
+	if err := ConfigGlobal.check(); err != nil {
+		return err
 	}
 	return nil
 }

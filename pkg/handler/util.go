@@ -13,7 +13,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/sirupsen/logrus"
+	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -359,4 +361,20 @@ func updateFuncResource(request *models.BatchUpdateSdResourceRequest,
 // check stable_diffusion_model val not "" or nil
 func checkSdModelValid(sdModel string) bool {
 	return sdModel != ""
+}
+
+// extra ossUrl
+func extraOssUrl(resp *http.Response) *[]string {
+	in, err := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	if err != nil {
+		logrus.Warn("get oss url error")
+		return nil
+	}
+	var m models.SubmitTaskResponse
+	if err := json.Unmarshal(in, &m); err != nil {
+		return nil
+	} else {
+		return m.OssUrl
+	}
 }
