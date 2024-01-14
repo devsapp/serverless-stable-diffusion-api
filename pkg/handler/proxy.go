@@ -496,6 +496,7 @@ func (p *ProxyHandler) ExtraImages(c *gin.Context) {
 				}
 				return config.TASK_FAILED
 			}(),
+			OssUrl: extraOssUrl(resp),
 		})
 	}
 }
@@ -633,6 +634,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 				}
 				return config.TASK_FAILED
 			}(),
+			OssUrl: extraOssUrl(resp),
 		})
 	}
 }
@@ -765,8 +767,47 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 				}
 				return config.TASK_FAILED
 			}(),
+			OssUrl: extraOssUrl(resp),
 		})
 	}
+}
+
+// DelSDFunc delete sd function
+// (POST /del/sd/functions)
+func (p *ProxyHandler) DelSDFunc(c *gin.Context) {
+	username := c.GetHeader(userKey)
+	if username == "" {
+		if config.ConfigGlobal.EnableLogin() {
+			handleError(c, http.StatusBadRequest, config.BADREQUEST)
+			return
+		} else {
+			username = DEFAULT_USER
+		}
+	}
+	request := new(models.DelSDFunctionRequest)
+	if err := getBindResult(c, request); err != nil {
+		handleError(c, http.StatusBadRequest, config.BADREQUEST)
+		return
+	}
+	logrus.Info(*request.Functions)
+	if fails, errs := module.FuncManagerGlobal.DeleteFunction(*request.Functions); fails != nil && len(fails) > 0 {
+		failFuncs := make([]map[string]interface{}, 0, len(fails))
+		for i, _ := range fails {
+			failFuncs = append(failFuncs, map[string]interface{}{
+				"functionName": fails[i],
+				"err":          errs[i],
+			})
+		}
+		c.JSON(http.StatusInternalServerError, models.DelSDFunctionResponse{
+			Status: utils.String("fail"),
+			Fails:  &failFuncs,
+		})
+	} else {
+		c.JSON(http.StatusOK, models.DelSDFunctionResponse{
+			Status: utils.String("success"),
+		})
+	}
+
 }
 
 // UpdateOptions update config options
@@ -830,6 +871,7 @@ func (p *ProxyHandler) getTaskResult(taskId string) (*models.TaskResultResponse,
 		Parameters: new(map[string]interface{}),
 		Info:       new(map[string]interface{}),
 		Images:     new([]string),
+		OssUrl:     new([]string),
 	}
 	data, err := p.taskStore.Get(taskId, []string{datastore.KTaskStatus, datastore.KTaskImage, datastore.KTaskInfo,
 		datastore.KTaskParams, datastore.KTaskCode})
@@ -868,6 +910,11 @@ func (p *ProxyHandler) getTaskResult(taskId string) (*models.TaskResultResponse,
 		logrus.WithFields(logrus.Fields{"taskId": taskId}).Println("Unmarshal Info error=", err.Error())
 	}
 	*result.Info = mm
+	if ossUrl, err := module.OssGlobal.GetUrl(*result.Images); err == nil {
+		*result.OssUrl = ossUrl
+	} else {
+		logrus.Warn("get oss url error")
+	}
 	return result, nil
 }
 
@@ -962,10 +1009,10 @@ func isAsync(invokeType string) bool {
 	if config.ConfigGlobal.GetFlexMode() == config.MultiFunc && config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
 		return false
 	}
-	if invokeType == "sync" {
-		return false
+	if invokeType == "async" {
+		return true
 	}
-	return true
+	return false
 }
 
 func (p *ProxyHandler) NoRouterHandler(c *gin.Context) {

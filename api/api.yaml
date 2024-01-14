@@ -319,6 +319,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /del/sd/functions:
+    post:
+      summary: delete sd function
+      operationId: DelSDFunc
+      requestBody:
+        description: functions list
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DelSDFunctionRequest'
+      responses:
+        "200":
+          description: del success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DelSDFunctionResponse"
+        "500":
+          description: update function partial failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DelSDFunctionResponse"
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /batch_update_sd_resource:
     post:
       summary: update sd function resource by batch, Supports a specified list of functions, or all
@@ -789,6 +819,11 @@ components:
         status:
           type: string
           example: "submitted"
+        ossUrl:
+          type: array
+          items:
+            type: string
+          description: "oss url"
         message:
           type: string
           example: "Task has been successfully submitted."
@@ -839,6 +874,11 @@ components:
           items:
             type: string
           example: ["/path/to/image1.jpg", "/path/to/image2.jpg"]
+        ossUrl:
+          type: array
+          items:
+            type: string
+          description: "oss url"
         parameters:
           description: task predict params
           type: object
@@ -1024,6 +1064,24 @@ components:
         errMsg:
           type: string
           description: fail message
+    DelSDFunctionRequest:
+      properties:
+        functions:
+          type: array
+          items:
+            type: string
+          description: del functions
+    DelSDFunctionResponse:
+      properties:
+        status:
+          type: string
+          description: success|fail
+          example: "success"
+        fails:
+          type: array
+          items:
+            type: object
+          description: fail delete functions
     Error:
       required:
         - code

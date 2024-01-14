@@ -7,6 +7,7 @@ import (
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/handler"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/log"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/module"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"net"
@@ -32,6 +33,7 @@ func NewAgentServer(port string, dbType datastore.DatastoreType, mode string) (*
 		gin.SetMode(gin.ReleaseMode)
 	}
 	router := gin.New()
+	router.Use(cors.Default())
 	router.Use(gin.Logger(), gin.Recovery())
 	router.Use(handler.Stat())
 	tableFactory := datastore.DatastoreFactory{}

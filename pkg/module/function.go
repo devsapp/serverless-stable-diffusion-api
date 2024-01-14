@@ -130,7 +130,6 @@ func (f *FuncManager) GetLastInvokeEndpoint(sdModel *string) string {
 // second get from db
 // third create function and return endpoint
 func (f *FuncManager) GetEndpoint(sdModel string) (string, error) {
-	//return "http://localhost:8010", nil
 	key := "default"
 	if config.ConfigGlobal.GetFlexMode() == config.MultiFunc && sdModel != "" {
 		key = sdModel
@@ -240,31 +239,13 @@ func (f *FuncManager) UpdateFunctionResource(resources map[string]*FuncResource)
 	return success, fail, errs
 }
 
-func getFC3UpdateFunctionRequest(resource *FuncResource) *fc3.UpdateFunctionRequest {
-	req := new(fc3.UpdateFunctionInput).SetRuntime("custom-container").
-		SetMemorySize(resource.MemorySize).SetCpu(resource.CPU).SetGpuConfig(new(fc3.GPUConfig).
-		SetGpuType(resource.InstanceType).SetGpuMemorySize(resource.GpuMemorySize)).
-		SetTimeout(resource.Timeout).SetCustomContainerConfig(new(fc3.CustomContainerConfig).
-		SetImage(resource.Image)).SetEnvironmentVariables(resource.Env)
-	if resource.VpcConfig != nil {
-		vpcConfig := &fc3.VPCConfig{}
-		if err := utils.MapToStruct(*resource.VpcConfig, vpcConfig); err == nil {
-			req.SetVpcConfig(vpcConfig)
-		}
+// DeleteFunction delete function
+func (f *FuncManager) DeleteFunction(functions []string) ([]string, []string) {
+	if isFc3() {
+		return f.delFunctionFC3(functions)
+	} else {
+		return f.delFunction(functions)
 	}
-	if resource.NasConfig != nil {
-		nasConfig := &fc3.NASConfig{}
-		if err := utils.MapToStruct(*resource.NasConfig, nasConfig); err == nil {
-			req.SetNasConfig(nasConfig)
-		}
-	}
-	if resource.OssMountConfig != nil {
-		ossConfig := &fc3.OSSMountConfig{}
-		if err := utils.MapToStruct(*resource.OssMountConfig, ossConfig); err == nil {
-			req.SetOssMountConfig(ossConfig)
-		}
-	}
-	return new(fc3.UpdateFunctionRequest).SetRequest(req)
 }
 
 // get endpoint from cache
@@ -509,6 +490,7 @@ func getCreateFuncRequest(functionName string, env map[string]*string) *fc.Creat
 		GpuMemorySize:        utils.Int32(config.ConfigGlobal.GpuMemorySize),
 		EnvironmentVariables: env,
 		CustomContainerConfig: &fc.CustomContainerConfig{
+			Command:          utils.String("/docker/entrypoint.sh"),
 			AccelerationType: utils.String("Default"),
 			Image:            utils.String(config.ConfigGlobal.Image),
 			WebServerMode:    utils.Bool(true),
@@ -532,6 +514,18 @@ func getCreateFuncRequest(functionName string, env map[string]*string) *fc.Creat
 		}()
 	}
 	return defaultReq
+}
+
+func (f *FuncManager) delFunction(functionNames []string) (fails []string, errs []string) {
+	for _, functionName := range functionNames {
+		f.fcClient.DeleteTrigger(&config.ConfigGlobal.ServiceName, &functionName, utils.String(config.TRIGGER_NAME))
+		if _, err := f.fcClient.DeleteFunction(&config.ConfigGlobal.ServiceName, &functionName); err != nil {
+			logrus.Warnf("%s delete fail, err: %s", functionName, err.Error())
+			fails = append(fails, functionName)
+			errs = append(errs, err.Error())
+		}
+	}
+	return
 }
 
 // get trigger request
@@ -588,6 +582,7 @@ func (f *FuncManager) getCreateFuncRequestFc3(functionName string, env map[strin
 		EnvironmentVariables: env,
 		Handler:              utils.String("index.handler"),
 		CustomContainerConfig: &fc3.CustomContainerConfig{
+			Command:          []*string{utils.String("/docker/entrypoint.sh")},
 			AccelerationType: utils.String("Default"),
 			Image:            utils.String(config.ConfigGlobal.Image),
 			Port:             utils.Int32(config.ConfigGlobal.CAPort),
@@ -611,6 +606,18 @@ func (f *FuncManager) getCreateFuncRequestFc3(functionName string, env map[strin
 	return &fc3.CreateFunctionRequest{
 		Request: input,
 	}
+}
+
+// delete function
+func (f *FuncManager) delFunctionFC3(functionNames []string) (fails []string, errs []string) {
+	for _, functionName := range functionNames {
+		if _, err := f.fc3Client.DeleteFunction(&functionName); err != nil {
+			logrus.Warnf("%s delete fail, err: %s", functionName, err.Error())
+			fails = append(fails, functionName)
+			errs = append(errs, err.Error())
+		}
+	}
+	return
 }
 
 // get trigger request
@@ -649,4 +656,31 @@ func getEnv(sdModel string) map[string]*string {
 		env[config.OSS_BUCKET] = utils.String(config.ConfigGlobal.Bucket)
 	}
 	return env
+}
+
+func getFC3UpdateFunctionRequest(resource *FuncResource) *fc3.UpdateFunctionRequest {
+	req := new(fc3.UpdateFunctionInput).SetRuntime("custom-container").
+		SetMemorySize(resource.MemorySize).SetCpu(resource.CPU).SetGpuConfig(new(fc3.GPUConfig).
+		SetGpuType(resource.InstanceType).SetGpuMemorySize(resource.GpuMemorySize)).
+		SetTimeout(resource.Timeout).SetCustomContainerConfig(new(fc3.CustomContainerConfig).
+		SetImage(resource.Image)).SetEnvironmentVariables(resource.Env)
+	if resource.VpcConfig != nil {
+		vpcConfig := &fc3.VPCConfig{}
+		if err := utils.MapToStruct(*resource.VpcConfig, vpcConfig); err == nil {
+			req.SetVpcConfig(vpcConfig)
+		}
+	}
+	if resource.NasConfig != nil {
+		nasConfig := &fc3.NASConfig{}
+		if err := utils.MapToStruct(*resource.NasConfig, nasConfig); err == nil {
+			req.SetNasConfig(nasConfig)
+		}
+	}
+	if resource.OssMountConfig != nil {
+		ossConfig := &fc3.OSSMountConfig{}
+		if err := utils.MapToStruct(*resource.OssMountConfig, ossConfig); err == nil {
+			req.SetOssMountConfig(ossConfig)
+		}
+	}
+	return new(fc3.UpdateFunctionRequest).SetRequest(req)
 }

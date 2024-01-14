@@ -15,12 +15,17 @@ import (
 	"strings"
 )
 
+const (
+	expiredInSec = 3 * 60 * 60 * 1000
+)
+
 type OssOp interface {
 	UploadFile(ossKey, localFile string) error
 	UploadFileByByte(ossKey string, body []byte) error
 	DownloadFile(ossKey, localFile string) error
 	DeleteFile(ossKey string) error
 	DownloadFileToBase64(ossPath string) (*string, error)
+	GetUrl(ossPath []string) ([]string, error)
 }
 
 // OssGlobal oss manager
@@ -52,6 +57,18 @@ func NewOssManager() error {
 
 type OssManagerRemote struct {
 	bucket *oss.Bucket
+}
+
+func (o *OssManagerRemote) GetUrl(ossKeys []string) ([]string, error) {
+	ossUrl := make([]string, 0, len(ossKeys))
+	for _, key := range ossKeys {
+		url, err := o.bucket.SignURL(key, oss.HTTPGet, expiredInSec)
+		if err != nil {
+			return nil, errors.New("get")
+		}
+		ossUrl = append(ossUrl, url)
+	}
+	return ossUrl, nil
 }
 
 // UploadFile upload file to oss
@@ -93,6 +110,10 @@ func (o *OssManagerRemote) DownloadFileToBase64(ossKey string) (*string, error) 
 }
 
 type OssManagerLocal struct {
+}
+
+func (o *OssManagerLocal) GetUrl(ossKey []string) ([]string, error) {
+	return nil, errors.New("not support")
 }
 
 func (o *OssManagerLocal) UploadFile(ossKey, localFile string) error {
