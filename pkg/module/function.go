@@ -582,7 +582,7 @@ func (f *FuncManager) getCreateFuncRequestFc3(functionName string, env map[strin
 		EnvironmentVariables: env,
 		Handler:              utils.String("index.handler"),
 		CustomContainerConfig: &fc3.CustomContainerConfig{
-			Command:          []*string{utils.String("/docker/entrypoint.sh")},
+			Entrypoint:       []*string{utils.String("/docker/entrypoint.sh")},
 			AccelerationType: utils.String("Default"),
 			Image:            utils.String(config.ConfigGlobal.Image),
 			Port:             utils.Int32(config.ConfigGlobal.CAPort),
