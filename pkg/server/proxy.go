@@ -26,6 +26,7 @@ type ProxyServer struct {
 func NewProxyServer(port string, dbType datastore.DatastoreType, mode string) (*ProxyServer, error) {
 	// init oss manager
 	if err := module.NewOssManager(); err != nil {
+		logrus.Errorf("oss init error %v", err)
 		return nil, err
 	}
 	tableFactory := datastore.DatastoreFactory{}
@@ -36,6 +37,7 @@ func NewProxyServer(port string, dbType datastore.DatastoreType, mode string) (*
 	// init user table
 	userDataStore := tableFactory.NewTable(dbType, datastore.KUserTableName)
 	if err := module.InitUserManager(userDataStore); err != nil {
+		logrus.Errorf("user init error %v", err)
 		return nil, err
 	}
 	// init config table
@@ -44,6 +46,7 @@ func NewProxyServer(port string, dbType datastore.DatastoreType, mode string) (*
 	funcDataStore := tableFactory.NewTable(dbType, datastore.KModelServiceTableName)
 	// init func manager
 	if err := module.InitFuncManager(funcDataStore); err != nil {
+		logrus.Errorf("func manage init error %v", err)
 		return nil, err
 	}
 	if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
