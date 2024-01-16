@@ -474,16 +474,7 @@ func (p *ProxyHandler) ExtraImages(c *gin.Context) {
 		return nil
 	})
 	if err != nil || (resp.StatusCode != syncSuccessCode && resp.StatusCode != asyncSuccessCode) {
-		if err != nil {
-			logrus.WithFields(logrus.Fields{"taskId": taskId}).Error(err.Error())
-		} else {
-			logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("%v", resp)
-		}
-		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
-			TaskId:  taskId,
-			Status:  config.TASK_FAILED,
-			Message: utils.String(config.INTERNALERROR),
-		})
+		handleRespError(c, err, resp, taskId)
 	} else {
 		c.JSON(http.StatusOK, models.SubmitTaskResponse{
 			TaskId: taskId,
@@ -550,7 +541,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 				TaskId:  taskId,
 				Status:  config.TASK_FAILED,
-				Message: utils.String(config.NOFOUNDENDPOINT),
+				Message: utils.String(err.Error()),
 			})
 			return
 		}
@@ -573,7 +564,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 				TaskId:  taskId,
 				Status:  config.TASK_FAILED,
-				Message: utils.String(config.INTERNALERROR),
+				Message: utils.String(config.OTSPUTERROR),
 			})
 			return
 		}
@@ -584,7 +575,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 				TaskId:  taskId,
 				Status:  config.TASK_FAILED,
-				Message: utils.String(config.INTERNALERROR),
+				Message: utils.String(config.OTSGETERROR),
 			})
 			logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("get config version err=%s", err.Error())
 			return
@@ -612,16 +603,7 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 		return nil
 	})
 	if err != nil || (resp.StatusCode != syncSuccessCode && resp.StatusCode != asyncSuccessCode) {
-		if err != nil {
-			logrus.WithFields(logrus.Fields{"taskId": taskId}).Error(err.Error())
-		} else {
-			logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("%v", resp)
-		}
-		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
-			TaskId:  taskId,
-			Status:  config.TASK_FAILED,
-			Message: utils.String(config.INTERNALERROR),
-		})
+		handleRespError(c, err, resp, taskId)
 	} else {
 		c.JSON(http.StatusOK, models.SubmitTaskResponse{
 			TaskId: taskId,
@@ -688,7 +670,7 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 				TaskId:  taskId,
 				Status:  config.TASK_FAILED,
-				Message: utils.String(config.NOFOUNDENDPOINT),
+				Message: utils.String(err.Error()),
 			})
 			return
 		}
@@ -711,7 +693,7 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 				TaskId:  taskId,
 				Status:  config.TASK_FAILED,
-				Message: utils.String(config.INTERNALERROR),
+				Message: utils.String(config.OTSPUTERROR),
 			})
 			return
 		}
@@ -722,7 +704,7 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 				TaskId:  taskId,
 				Status:  config.TASK_FAILED,
-				Message: utils.String(config.INTERNALERROR),
+				Message: utils.String(config.OTSGETERROR),
 			})
 			logrus.WithFields(logrus.Fields{"taskId": taskId}).Error("get config version err=", err.Error())
 			return
@@ -750,11 +732,7 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 		return nil
 	})
 	if err != nil || (resp.StatusCode != syncSuccessCode && resp.StatusCode != asyncSuccessCode) {
-		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
-			TaskId:  taskId,
-			Status:  config.TASK_FAILED,
-			Message: utils.String(config.INTERNALERROR),
-		})
+		handleRespError(c, err, resp, taskId)
 	} else {
 		c.JSON(http.StatusOK, models.SubmitTaskResponse{
 			TaskId: taskId,
@@ -1073,7 +1051,7 @@ func (p *ProxyHandler) NoRouterHandler(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 				TaskId:  taskId,
 				Status:  config.TASK_FAILED,
-				Message: utils.String(config.NOFOUNDENDPOINT),
+				Message: utils.String(err.Error()),
 			})
 			return
 		}
