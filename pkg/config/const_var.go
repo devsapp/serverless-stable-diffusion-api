@@ -27,6 +27,8 @@ const (
 
 // error message
 const (
+	OTSPUTERROR        = "put ots error"
+	OTSGETERROR        = "get ots error"
 	INTERNALERROR      = "an internal error"
 	BADREQUEST         = "bad request body"
 	NOTFOUND           = "not found"

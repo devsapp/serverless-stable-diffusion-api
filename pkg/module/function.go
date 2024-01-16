@@ -134,33 +134,47 @@ func (f *FuncManager) GetEndpoint(sdModel string) (string, error) {
 	if config.ConfigGlobal.GetFlexMode() == config.MultiFunc && sdModel != "" {
 		key = sdModel
 	}
+	var err error
+	endpoint := ""
 	// retry
 	reTry := 2
 	for reTry > 0 {
 		// first get cache
-		if endpoint := f.getEndpointFromCache(key); endpoint != "" {
+		if endpoint = f.getEndpointFromCache(key); endpoint != "" {
 			f.lastInvokeEndpoint = endpoint
 			return endpoint, nil
 		}
 
 		f.lock.Lock()
 		// second get from db
-		if endpoint := f.getEndpointFromDb(key); endpoint != "" {
+		if endpoint, err = f.getEndpointFromDb(key); endpoint != "" {
 			f.lastInvokeEndpoint = endpoint
 			f.lock.Unlock()
 			return endpoint, nil
 		}
 		// third create function
-		if endpoint := f.createFunc(key, sdModel, getEnv(sdModel)); endpoint != "" {
+		if endpoint, err = f.createFunc(key, sdModel, getEnv(sdModel)); endpoint != "" {
 			f.lastInvokeEndpoint = endpoint
 			f.lock.Unlock()
 			return endpoint, nil
+		}
+		// four create fail get function
+		functionName := GetFunctionName(sdModel)
+		if f.GetFcFunc(functionName) != nil {
+			if endpoint = GetHttpTrigger(functionName); endpoint != "" {
+				f.lastInvokeEndpoint = endpoint
+				f.endpoints[key] = []string{endpoint, sdModel}
+				logrus.Warnf("function %s sdModel %s in FC not in db, please check。Solution：del %s in FC",
+					functionName, sdModel, functionName)
+				f.lock.Unlock()
+				return endpoint, nil
+			}
 		}
 		f.lock.Unlock()
 		reTry--
 		time.Sleep(RETRY_INTERVALMS)
 	}
-	return "", errors.New("not get sd endpoint")
+	return "", err
 }
 
 // UpdateAllFunctionEnv update instance env, restart agent function
@@ -259,18 +273,19 @@ func (f *FuncManager) getEndpointFromCache(key string) string {
 }
 
 // get endpoint from db
-func (f *FuncManager) getEndpointFromDb(key string) string {
+func (f *FuncManager) getEndpointFromDb(key string) (string, error) {
 	if data, err := f.funcStore.Get(key, []string{datastore.KModelServiceSdModel,
 		datastore.KModelServiceEndPoint}); err == nil && len(data) > 0 {
 		// update cache
 		f.endpoints[key] = []string{data[datastore.KModelServiceEndPoint].(string),
 			data[datastore.KModelServiceSdModel].(string)}
-		return data[datastore.KModelServiceEndPoint].(string)
+		return data[datastore.KModelServiceEndPoint].(string), nil
+	} else {
+		return "", err
 	}
-	return ""
 }
 
-func (f *FuncManager) createFunc(key, sdModel string, env map[string]*string) string {
+func (f *FuncManager) createFunc(key, sdModel string, env map[string]*string) (string, error) {
 	functionName := GetFunctionName(key)
 	var endpoint string
 	var err error
@@ -285,11 +300,11 @@ func (f *FuncManager) createFunc(key, sdModel string, env map[string]*string) st
 		f.endpoints[key] = []string{endpoint, sdModel}
 		// put func to db
 		f.putFunc(key, functionName, sdModel, endpoint)
-		return endpoint
+		return endpoint, nil
 	} else {
 		logrus.Info(err.Error())
+		return "", err
 	}
-	return ""
 }
 
 // GetFcFuncEnv get fc function env info
@@ -361,8 +376,8 @@ func (f *FuncManager) loadFunc() {
 		// check fc && db match
 		functionName := GetFunctionName(sdModel)
 		if f.GetFcFunc(functionName) == nil {
-			logrus.Errorf("sdModel:%s function in db, not in FC, auto delete ots table fucntion key=%s",
-				sdModel, sdModel)
+			logrus.Errorf("functionName:%s, sdModel:%s function in db, not in FC, auto delete ots table fucntion "+
+				"key=%s", functionName, sdModel, sdModel)
 			// function in db not in FC， del ots data
 			f.funcStore.Delete(sdModel)
 			continue
@@ -600,8 +615,12 @@ func (f *FuncManager) getCreateFuncRequestFc3(functionName string, env map[strin
 		if config.ConfigGlobal.Image == "" {
 			input.CustomContainerConfig.Image = sd.CustomContainerConfig.Image
 		}
-		input.CustomContainerConfig.Entrypoint = sd.CustomContainerConfig.Entrypoint
-		input.CustomContainerConfig.Command = sd.CustomContainerConfig.Command
+		if sd.CustomContainerConfig.Entrypoint != nil && len(sd.CustomContainerConfig.Entrypoint) > 0 {
+			input.CustomContainerConfig.Entrypoint = sd.CustomContainerConfig.Entrypoint
+		}
+		if sd.CustomContainerConfig.Command != nil && len(sd.CustomContainerConfig.Command) > 0 {
+			input.CustomContainerConfig.Command = sd.CustomContainerConfig.Command
+		}
 	}
 	return &fc3.CreateFunctionRequest{
 		Request: input,

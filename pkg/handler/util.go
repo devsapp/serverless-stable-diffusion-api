@@ -378,3 +378,43 @@ func extraOssUrl(resp *http.Response) *[]string {
 		return m.OssUrl
 	}
 }
+
+// extra err message
+func extraErrorMsg(resp *http.Response) *string {
+	in, err := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	if err != nil {
+		logrus.Warn("extra resp error")
+		return nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(in, &m); err != nil {
+		return nil
+	} else {
+		if val, ok := m["message"]; ok {
+			msg := val.(string)
+			return &msg
+		}
+	}
+	return utils.String(string(in))
+}
+
+func handleRespError(c *gin.Context, err error, resp *http.Response, taskId string) {
+	msg := ""
+	if err != nil {
+		msg = err.Error()
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("%v", err)
+	} else {
+		if v := extraErrorMsg(resp); v != nil {
+			msg = *v
+		} else {
+			msg = config.INTERNALERROR
+		}
+		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("%v", resp)
+	}
+	c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
+		TaskId:  taskId,
+		Status:  config.TASK_FAILED,
+		Message: utils.String(msg),
+	})
+}
