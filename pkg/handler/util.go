@@ -313,6 +313,7 @@ func updateFuncResource(request *models.BatchUpdateSdResourceRequest,
 		for key, val := range *request.Env {
 			res.Env[key] = utils.String(val.(string))
 		}
+		isDiff = true
 	}
 	// extraArgs
 	if request.ExtraArgs != nil && *request.ExtraArgs != "" && *request.ExtraArgs != *res.Env["EXTRA_ARGS"] {
