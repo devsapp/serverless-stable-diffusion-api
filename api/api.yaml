@@ -547,8 +547,8 @@ components:
           format: int32
           example: 100
         cfg_scale:
-          type: integer
-          format: int32
+          type: number
+          format: float
           example: 1
         width:
           type: integer
@@ -649,8 +649,8 @@ components:
           format: float
           example: 0.8
         image_cfg_scale:
-          type: integer
-          format: int32
+          type: number
+          format: float
           example: 2
         mask:
           type: string
@@ -730,8 +730,8 @@ components:
           format: int32
           example: 50
         cfg_scale:
-          type: integer
-          format: int32
+          type: number
+          format: float
           example: 2
         width:
           type: integer
