@@ -376,10 +376,10 @@ func (f *FuncManager) loadFunc() {
 		// check fc && db match
 		functionName := GetFunctionName(sdModel)
 		if f.GetFcFunc(functionName) == nil {
-			logrus.Errorf("functionName:%s, sdModel:%s function in db, not in FC, auto delete ots table fucntion "+
+			logrus.Errorf("functionName:%s, sdModel:%s function in db, not in FC, please delete ots table fucntion "+
 				"key=%s", functionName, sdModel, sdModel)
 			// function in db not in FC， del ots data
-			f.funcStore.Delete(sdModel)
+			//f.funcStore.Delete(sdModel)
 			continue
 		}
 		//image := data[datastore.KModelServerImage].(string)

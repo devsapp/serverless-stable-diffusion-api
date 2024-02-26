@@ -2,6 +2,7 @@ package module
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -135,11 +137,30 @@ func (s *SDManager) waitModelLoaded(timeout int) {
 		case <-timeoutChan:
 			return
 		default:
-			if s.modelLoadedFlag {
+			if s.modelLoadedFlag && s.predictProbe() {
 				return
 			}
 		}
 	}
+}
+
+// predict one task
+func (s *SDManager) predictProbe() bool {
+	payload := map[string]interface{}{
+		"prompt": "",
+		"steps":  1,
+		"height": 8,
+		"width":  8,
+	}
+	body, _ := json.Marshal(payload)
+	req, _ := http.NewRequest(config.HTTP_POST,
+		fmt.Sprintf("%s%s", config.ConfigGlobal.SdUrlPrefix,
+			config.TXT2IMG), bytes.NewBuffer(body))
+	client := &http.Client{}
+	if resp, err := client.Do(req); err == nil && resp.StatusCode == 200 {
+		return true
+	}
+	return false
 }
 
 func (s *SDManager) detectSdAlive() {
