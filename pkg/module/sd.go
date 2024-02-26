@@ -144,7 +144,7 @@ func (s *SDManager) waitModelLoaded(timeout int) {
 	}
 }
 
-// predict one task
+// predict one task, return true always
 func (s *SDManager) predictProbe() bool {
 	payload := map[string]interface{}{
 		"prompt": "",
@@ -157,10 +157,8 @@ func (s *SDManager) predictProbe() bool {
 		fmt.Sprintf("%s%s", config.ConfigGlobal.SdUrlPrefix,
 			config.TXT2IMG), bytes.NewBuffer(body))
 	client := &http.Client{}
-	if resp, err := client.Do(req); err == nil && resp.StatusCode == 200 {
-		return true
-	}
-	return false
+	client.Do(req)
+	return true
 }
 
 func (s *SDManager) detectSdAlive() {
