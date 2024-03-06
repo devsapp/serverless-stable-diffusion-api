@@ -547,8 +547,8 @@ components:
           format: int64
           example: 100
         cfg_scale:
-          type: integer
-          format: int64
+          type: number
+          format: float
           example: 1
         width:
           type: integer
