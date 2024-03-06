@@ -321,13 +321,13 @@ func updateFuncResource(request *models.BatchUpdateSdResourceRequest,
 		isDiff = true
 	}
 	// gpuMemorySize
-	if request.GpuMemorySize != nil && *request.GpuMemorySize > 0 && *request.GpuMemorySize != res.GpuMemorySize {
-		res.GpuMemorySize = *request.GpuMemorySize
+	if request.GpuMemorySize != nil && *request.GpuMemorySize > 0 && *request.GpuMemorySize != int64(res.GpuMemorySize) {
+		res.GpuMemorySize = int32(*request.GpuMemorySize)
 		isDiff = true
 	}
 	// MemorySize
-	if request.MemorySize != nil && *request.MemorySize > 0 && *request.MemorySize != res.MemorySize {
-		res.MemorySize = *request.MemorySize
+	if request.MemorySize != nil && *request.MemorySize > 0 && *request.MemorySize != int64(res.MemorySize) {
+		res.MemorySize = int32(*request.MemorySize)
 		isDiff = true
 	}
 	// instanceType
@@ -336,8 +336,8 @@ func updateFuncResource(request *models.BatchUpdateSdResourceRequest,
 		isDiff = true
 	}
 	// timeout
-	if request.Timeout != nil && *request.Timeout > 0 && *request.Timeout != res.Timeout {
-		res.Timeout = *request.Timeout
+	if request.Timeout != nil && *request.Timeout > 0 && *request.Timeout != int64(res.Timeout) {
+		res.Timeout = int32(*request.Timeout)
 		isDiff = true
 	}
 	if request.VpcConfig != nil {
@@ -413,7 +413,7 @@ func handleRespError(c *gin.Context, err error, resp *http.Response, taskId stri
 		}
 		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("%v", resp)
 	}
-	c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
+	c.JSON(resp.StatusCode, models.SubmitTaskResponse{
 		TaskId:  taskId,
 		Status:  config.TASK_FAILED,
 		Message: utils.String(msg),

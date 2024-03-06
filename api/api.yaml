@@ -469,30 +469,30 @@ components:
           example: 0.5
         firstphase_width:
           type: integer
-          format: int32
+          format: int64
           example: 640
         firstphase_height:
           type: integer
-          format: int32
+          format: int64
           example: 480
         hr_scale:
           type: integer
-          format: int32
+          format: int64
           example: 2
         hr_upscaler:
           type: string
           example: "upscale_method_v1"
         hr_second_pass_steps:
           type: integer
-          format: int32
+          format: int64
           example: 10
         hr_resize_x:
           type: integer
-          format: int32
+          format: int64
           example: 1280
         hr_resize_y:
           type: integer
-          format: int32
+          format: int64
           example: 960
         hr_sampler_name:
           type: string
@@ -513,50 +513,50 @@ components:
           example: ["style1", "style2"]
         seed:
           type: integer
-          format: int32
+          format: int64
           example: 123456
         subseed:
           type: integer
-          format: int32
+          format: int64
           example: 789
         subseed_strength:
           type: integer
-          format: int32
+          format: int64
           example: 5
         seed_resize_from_h:
           type: integer
-          format: int32
+          format: int64
           example: 480
         seed_resize_from_w:
           type: integer
-          format: int32
+          format: int64
           example: 640
         sampler_name:
           type: string
           example: "sampler_v2"
         batch_size:
           type: integer
-          format: int32
+          format: int64
           example: 32
         n_iter:
           type: integer
-          format: int32
+          format: int64
           example: 1000
         steps:
           type: integer
-          format: int32
+          format: int64
           example: 100
         cfg_scale:
-          type: number
-          format: float
+          type: integer
+          format: int64
           example: 1
         width:
           type: integer
-          format: int32
+          format: int64
           example: 640
         height:
           type: integer
-          format: int32
+          format: int64
           example: 480
         restore_faces:
           type: boolean
@@ -575,27 +575,27 @@ components:
           example: "Avoid mountains"
         eta:
           type: integer
-          format: int32
+          format: int64
           example: 5
         s_min_uncond:
           type: integer
-          format: int32
+          format: int64
           example: 1
         s_churn:
           type: integer
-          format: int32
+          format: int64
           example: 3
         s_tmax:
           type: integer
-          format: int32
+          format: int64
           example: 10
         s_tmin:
           type: integer
-          format: int32
+          format: int64
           example: 1
         s_noise:
           type: integer
-          format: int32
+          format: int64
           example: 2
         override_settings:
           type: object
@@ -642,7 +642,7 @@ components:
           example: ["image1_path", "image2_path"]
         resize_mode:
           type: integer
-          format: int32
+          format: int64
           example: 1
         denoising_strength:
           type: number
@@ -657,34 +657,34 @@ components:
           example: "mask_path"
         mask_blur:
           type: integer
-          format: int32
+          format: int64
           example: 3
         mask_blur_x:
           type: integer
-          format: int32
+          format: int64
           example: 2
         mask_blur_y:
           type: integer
-          format: int32
+          format: int64
           example: 2
         inpainting_fill:
           type: integer
-          format: int32
+          format: int64
           example: 4
         inpaint_full_res:
           type: boolean
           example: true
         inpaint_full_res_padding:
           type: integer
-          format: int32
+          format: int64
           example: 2
         inpainting_mask_invert:
           type: integer
-          format: int32
+          format: int64
           example: 0
         initial_noise_multiplier:
           type: integer
-          format: int32
+          format: int64
           example: 5
         prompt:
           type: string
@@ -696,38 +696,38 @@ components:
           example: ["styleA", "styleB"]
         seed:
           type: integer
-          format: int32
+          format: int64
           example: 654321
         subseed:
           type: integer
-          format: int32
+          format: int64
           example: 987
         subseed_strength:
           type: integer
-          format: int32
+          format: int64
           example: 6
         seed_resize_from_h:
           type: integer
-          format: int32
+          format: int64
           example: 480
         seed_resize_from_w:
           type: integer
-          format: int32
+          format: int64
           example: 640
         sampler_name:
           type: string
           example: "sampler_v3"
         batch_size:
           type: integer
-          format: int32
+          format: int64
           example: 64
         n_iter:
           type: integer
-          format: int32
+          format: int64
           example: 500
         steps:
           type: integer
-          format: int32
+          format: int64
           example: 50
         cfg_scale:
           type: number
@@ -735,11 +735,11 @@ components:
           example: 2
         width:
           type: integer
-          format: int32
+          format: int64
           example: 1280
         height:
           type: integer
-          format: int32
+          format: int64
           example: 960
         restore_faces:
           type: boolean
@@ -758,27 +758,27 @@ components:
           example: "Avoid forests"
         eta:
           type: integer
-          format: int32
+          format: int64
           example: 6
         s_min_uncond:
           type: integer
-          format: int32
+          format: int64
           example: 2
         s_churn:
           type: integer
-          format: int32
+          format: int64
           example: 4
         s_tmax:
           type: integer
-          format: int32
+          format: int64
           example: 11
         s_tmin:
           type: integer
-          format: int32
+          format: int64
           example: 2
         s_noise:
           type: integer
-          format: int32
+          format: int64
           example: 3
         override_settings:
           type: object
@@ -943,7 +943,7 @@ components:
           example: "sd checkpoint"
         resize_mode:
           type: integer
-          format: int32
+          format: int64
           example: "0|1"
         show_extras_results:
           type: boolean
@@ -966,11 +966,11 @@ components:
           example: "2.0"
         upscaling_resize_w:
           type: integer
-          format: int32
+          format: int64
           example: "1024"
         upscaling_resize_h:
           type: integer
-          format: int32
+          format: int64
           example: "1024"
         upscaling_crop:
           type: boolean
@@ -1010,15 +1010,15 @@ components:
           description: fc.gpu.tesla.1:T4, fc.gpu.ampere.1:A10
         memorySize:
           type: integer
-          format: int32
+          format: int64
           description:  instance mem size (MB)
         gpuMemorySize:
           type: integer
-          format: int32
+          format: int64
           description: GPU Video RAM
         timeout:
           type: integer
-          format: int32
+          format: int64
           description: fucntion timeout
         extraArgs:
           type: string
@@ -1089,7 +1089,7 @@ components:
       properties:
         code:
           type: integer
-          format: int32
+          format: int64
           description: Error code
           example: 400
         message:

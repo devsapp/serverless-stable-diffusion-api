@@ -180,6 +180,12 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 	images, err := a.predictTask(username, taskId, config.IMG2IMG, body)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorln(err.Error())
+		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
+			TaskId:  taskId,
+			Status:  config.TASK_FAILED,
+			Message: utils.String(err.Error()),
+		})
+		return
 	}
 	if ossUrl, err := module.OssGlobal.GetUrl(images); err != nil {
 		logrus.Error("get oss url error")
@@ -274,6 +280,12 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 	images, err := a.predictTask(username, taskId, config.TXT2IMG, body)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorln(err.Error())
+		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
+			TaskId:  taskId,
+			Status:  config.TASK_FAILED,
+			Message: utils.String(err.Error()),
+		})
+		return
 	}
 	if ossUrl, err := module.OssGlobal.GetUrl(images); err != nil {
 		logrus.Error("get oss url error")
@@ -332,6 +344,8 @@ func (a *AgentHandler) predictTask(user, taskId, path string, body []byte) ([]st
 		logrus.WithFields(logrus.Fields{"taskId": taskId}).Println("json:", err.Error())
 	}
 	var images []string
+	var status string
+	var errMeg error
 	if resp.StatusCode == requestOk {
 		count := len(result.Images)
 		for i := 1; i <= count; i++ {
@@ -343,10 +357,14 @@ func (a *AgentHandler) predictTask(user, taskId, path string, body []byte) ([]st
 
 			images = append(images, ossPath)
 		}
+		status = config.TASK_FINISH
+	} else {
+		status = config.TASK_FAILED
+		errMeg = errors.New("predict error")
 	}
 	if err := a.taskStore.Update(taskId, map[string]interface{}{
 		datastore.KTaskCode:       int64(resp.StatusCode),
-		datastore.KTaskStatus:     config.TASK_FINISH,
+		datastore.KTaskStatus:     status,
 		datastore.KTaskImage:      strings.Join(images, ","),
 		datastore.KTaskParams:     string(params),
 		datastore.KTaskInfo:       result.Info,
@@ -355,7 +373,7 @@ func (a *AgentHandler) predictTask(user, taskId, path string, body []byte) ([]st
 		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorln(err.Error())
 		return nil, err
 	}
-	return images, nil
+	return images, errMeg
 }
 
 func (a *AgentHandler) taskProgress(ctx context.Context, user, taskId string) error {
@@ -452,7 +470,7 @@ func (a *AgentHandler) extraImages(user, taskId, path string, body []byte) ([]st
 		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorln(err.Error())
 		return nil, err
 	}
-	if result == nil {
+	if result == nil || resp.StatusCode != requestOk {
 		if err := a.taskStore.Update(taskId, map[string]interface{}{
 			datastore.KTaskCode:       int64(resp.StatusCode),
 			datastore.KTaskStatus:     config.TASK_FAILED,
