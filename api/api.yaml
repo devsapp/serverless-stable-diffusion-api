@@ -520,8 +520,8 @@ components:
           format: int64
           example: 789
         subseed_strength:
-          type: integer
-          format: int64
+          type: number
+          format: float
           example: 5
         seed_resize_from_h:
           type: integer
@@ -703,8 +703,8 @@ components:
           format: int64
           example: 987
         subseed_strength:
-          type: integer
-          format: int64
+          type: number
+          format: float
           example: 6
         seed_resize_from_h:
           type: integer
