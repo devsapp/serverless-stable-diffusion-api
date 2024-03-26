@@ -118,6 +118,10 @@ func (c *Config) EnableLogin() bool {
 	return c.LoginSwitch == "on"
 }
 
+func (c *Config) DisableProgress() bool {
+	return os.Getenv("DISABLE_PROGRESS") != ""
+}
+
 func (c *Config) GetSDPort() string {
 	if c.SdUrlPrefix == "" {
 		return DefaultSdPort
