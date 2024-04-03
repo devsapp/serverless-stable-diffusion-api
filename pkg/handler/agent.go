@@ -377,6 +377,9 @@ func (a *AgentHandler) predictTask(user, taskId, path string, body []byte) ([]st
 }
 
 func (a *AgentHandler) taskProgress(ctx context.Context, user, taskId string) error {
+	if config.ConfigGlobal.DisableProgress() {
+		return nil
+	}
 	var isStart bool
 	notifyDone := false
 	for {
