@@ -603,6 +603,12 @@ func (p *ProxyHandler) Txt2Img(c *gin.Context) {
 		return nil
 	})
 	if err != nil || (resp.StatusCode != syncSuccessCode && resp.StatusCode != asyncSuccessCode) {
+		if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
+			// write db
+			p.taskStore.Put(taskId, map[string]interface{}{
+				datastore.KTaskStatus: config.TASK_FAILED,
+			})
+		}
 		handleRespError(c, err, resp, taskId)
 	} else {
 		c.JSON(http.StatusOK, models.SubmitTaskResponse{
@@ -732,6 +738,12 @@ func (p *ProxyHandler) Img2Img(c *gin.Context) {
 		return nil
 	})
 	if err != nil || (resp.StatusCode != syncSuccessCode && resp.StatusCode != asyncSuccessCode) {
+		if config.ConfigGlobal.IsServerTypeMatch(config.CONTROL) {
+			// write db
+			p.taskStore.Put(taskId, map[string]interface{}{
+				datastore.KTaskStatus: config.TASK_FAILED,
+			})
+		}
 		handleRespError(c, err, resp, taskId)
 	} else {
 		c.JSON(http.StatusOK, models.SubmitTaskResponse{
