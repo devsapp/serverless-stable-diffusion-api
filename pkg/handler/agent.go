@@ -151,6 +151,12 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 	}
 	if err := a.updateOverrideSettingsRequest(request.OverrideSettings, username, configVer,
 		request.StableDiffusionModel, request.SdVae); err != nil {
+		// update task status
+		a.taskStore.Update(taskId, map[string]interface{}{
+			datastore.KTaskStatus:     config.TASK_FAILED,
+			datastore.KTaskCode:       int64(requestFail),
+			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+		})
 		handleError(c, http.StatusInternalServerError, "please check config")
 		return
 	}
@@ -179,6 +185,12 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 	// predict task
 	images, err := a.predictTask(username, taskId, config.IMG2IMG, body)
 	if err != nil {
+		// update task status
+		a.taskStore.Update(taskId, map[string]interface{}{
+			datastore.KTaskStatus:     config.TASK_FAILED,
+			datastore.KTaskCode:       int64(requestFail),
+			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+		})
 		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorln(err.Error())
 		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 			TaskId:  taskId,
@@ -188,6 +200,12 @@ func (a *AgentHandler) Img2Img(c *gin.Context) {
 		return
 	}
 	if ossUrl, err := module.OssGlobal.GetUrl(images); err != nil {
+		// update task status
+		a.taskStore.Update(taskId, map[string]interface{}{
+			datastore.KTaskStatus:     config.TASK_FAILED,
+			datastore.KTaskCode:       int64(requestFail),
+			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+		})
 		logrus.Error("get oss url error")
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "get oss url error",
@@ -247,6 +265,12 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 	if err := a.updateOverrideSettingsRequest(request.OverrideSettings, username, configVer,
 		request.StableDiffusionModel, request.SdVae); err != nil {
 		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorf("update OverrideSettings err=%s", err.Error())
+		// update task status
+		a.taskStore.Update(taskId, map[string]interface{}{
+			datastore.KTaskStatus:     config.TASK_FAILED,
+			datastore.KTaskCode:       int64(requestFail),
+			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+		})
 		handleError(c, http.StatusInternalServerError, "please check config")
 		return
 	}
@@ -279,6 +303,12 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 	// predict task
 	images, err := a.predictTask(username, taskId, config.TXT2IMG, body)
 	if err != nil {
+		// update task status
+		a.taskStore.Update(taskId, map[string]interface{}{
+			datastore.KTaskStatus:     config.TASK_FAILED,
+			datastore.KTaskCode:       int64(requestFail),
+			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+		})
 		logrus.WithFields(logrus.Fields{"taskId": taskId}).Errorln(err.Error())
 		c.JSON(http.StatusInternalServerError, models.SubmitTaskResponse{
 			TaskId:  taskId,
@@ -288,6 +318,12 @@ func (a *AgentHandler) Txt2Img(c *gin.Context) {
 		return
 	}
 	if ossUrl, err := module.OssGlobal.GetUrl(images); err != nil {
+		// update task status
+		a.taskStore.Update(taskId, map[string]interface{}{
+			datastore.KTaskStatus:     config.TASK_FAILED,
+			datastore.KTaskCode:       int64(requestFail),
+			datastore.KTaskModifyTime: fmt.Sprintf("%d", utils.TimestampS()),
+		})
 		logrus.Error("get oss url error")
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "get oss url error",
@@ -836,4 +872,14 @@ func (a *AgentHandler) NoRouterAgentHandler(c *gin.Context) {
 		}
 	}
 	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), respBody)
+}
+
+// InitializeHandler init handler
+// (POST /initialize)
+func InitializeHandler(c *gin.Context) {
+	if module.PredictProbe() {
+		c.JSON(200, "initialize success")
+	} else {
+		c.JSON(500, "initialize failed")
+	}
 }

@@ -137,15 +137,15 @@ func (s *SDManager) waitModelLoaded(timeout int) {
 		case <-timeoutChan:
 			return
 		default:
-			if s.modelLoadedFlag && s.predictProbe() {
+			if s.modelLoadedFlag && PredictProbe() {
 				return
 			}
 		}
 	}
 }
 
-// predict one task, return true always
-func (s *SDManager) predictProbe() bool {
+// PredictProbe predict one task, return true always
+func PredictProbe() bool {
 	payload := map[string]interface{}{
 		"prompt": "",
 		"steps":  1,
@@ -157,7 +157,11 @@ func (s *SDManager) predictProbe() bool {
 		fmt.Sprintf("%s%s", config.ConfigGlobal.SdUrlPrefix,
 			config.TXT2IMG), bytes.NewBuffer(body))
 	client := &http.Client{}
-	client.Do(req)
+	_, err := client.Do(req)
+	if err != nil {
+		logrus.Errorf("predict first image err=%s", err.Error())
+		return false
+	}
 	return true
 }
 
