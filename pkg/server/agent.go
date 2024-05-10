@@ -44,7 +44,8 @@ func NewAgentServer(port string, dbType datastore.DatastoreType, mode string) (*
 		}
 		agentServer.sdManager = module.NewSDManager(config.ConfigGlobal.GetSDPort())
 		// enable ReverserProxy
-		router.Any("/*path", handler.ReverseProxy)
+		router.POST("/initialize", handler.InitializeHandler)
+		router.NoRoute(handler.ReverseProxy)
 	} else {
 		// only api
 		// init function table
@@ -82,6 +83,7 @@ func NewAgentServer(port string, dbType datastore.DatastoreType, mode string) (*
 		agentServer.sdManager = module.NewSDManager(config.ConfigGlobal.GetSDPort())
 
 		handler.RegisterHandlers(router, agentHandler)
+		router.POST("/initialize", handler.InitializeHandler)
 		router.NoRoute(agentHandler.NoRouterAgentHandler)
 		agentServer.listenTask = listenTask
 		agentServer.taskDataStore = taskDataStore
