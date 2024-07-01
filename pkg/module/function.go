@@ -4,6 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"sync"
+	"time"
+
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
 	fc3 "github.com/alibabacloud-go/fc-20230330/client"
 	fc "github.com/alibabacloud-go/fc-open-20210406/v2/client"
@@ -15,9 +19,6 @@ import (
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/datastore"
 	"github.com/devsapp/serverless-stable-diffusion-api/pkg/utils"
 	"github.com/sirupsen/logrus"
-	"strings"
-	"sync"
-	"time"
 )
 
 const (
@@ -449,7 +450,7 @@ func GetHttpTrigger(functionName string) string {
 		if result, err := FuncManagerGlobal.fc3Client.ListTriggers(&functionName, new(fc3.ListTriggersRequest)); err == nil {
 			for _, trigger := range result.Body.Triggers {
 				if trigger.HttpTrigger != nil {
-					return *trigger.HttpTrigger.UrlInternet
+					return *trigger.HttpTrigger.UrlIntranet
 				}
 			}
 		}
@@ -458,7 +459,7 @@ func GetHttpTrigger(functionName string) string {
 			&functionName, new(fc.ListTriggersRequest)); err == nil {
 			for _, trigger := range result.Body.Triggers {
 				if trigger.UrlInternet != nil {
-					return *trigger.UrlInternet
+					return *trigger.UrlIntranet
 				}
 			}
 		}
@@ -485,8 +486,7 @@ func (f *FuncManager) createFCFunction(serviceName, functionName string,
 	if err != nil {
 		return "", err
 	}
-	return *(resp.Body.UrlInternet), nil
-
+	return *resp.Body.UrlIntranet, nil
 }
 
 // get create function request
@@ -505,7 +505,6 @@ func getCreateFuncRequest(functionName string, env map[string]*string) *fc.Creat
 		GpuMemorySize:        utils.Int32(config.ConfigGlobal.GpuMemorySize),
 		EnvironmentVariables: env,
 		CustomContainerConfig: &fc.CustomContainerConfig{
-			Command:          utils.String("/docker/entrypoint.sh"),
 			AccelerationType: utils.String("Default"),
 			Image:            utils.String(config.ConfigGlobal.Image),
 			WebServerMode:    utils.Bool(true),
@@ -519,14 +518,24 @@ func getCreateFuncRequest(functionName string, env map[string]*string) *fc.Creat
 			if sd.CustomContainerConfig.Entrypoint != nil && len(sd.CustomContainerConfig.Entrypoint) > 0 {
 				return sd.CustomContainerConfig.Entrypoint[0]
 			}
-			return utils.String("")
+			return nil
 		}()
 		defaultReq.CustomContainerConfig.Args = func() *string {
 			if sd.CustomContainerConfig.Command != nil && len(sd.CustomContainerConfig.Command) > 0 {
 				return sd.CustomContainerConfig.Command[0]
 			}
-			return utils.String("")
+			return nil
 		}()
+		if sd.EnvironmentVariables != nil {
+			allEnv := make(map[string]*string)
+			for k, v := range sd.EnvironmentVariables {
+				allEnv[k] = v
+			}
+			for k, v := range defaultReq.EnvironmentVariables {
+				allEnv[k] = v
+			}
+			defaultReq.EnvironmentVariables = allEnv
+		}
 	}
 	return defaultReq
 }
@@ -548,6 +557,7 @@ func getHttpTrigger() *fc.CreateTriggerRequest {
 	triggerConfig := make(map[string]interface{})
 	triggerConfig["authType"] = config.AUTH_TYPE
 	triggerConfig["methods"] = []string{config.HTTP_GET, config.HTTP_POST, config.HTTP_PUT}
+	triggerConfig["disableURLInternet"] = true
 	byteConfig, _ := json.Marshal(triggerConfig)
 	return &fc.CreateTriggerRequest{
 		TriggerName:   utils.String(config.TRIGGER_NAME),
@@ -575,7 +585,8 @@ func (f *FuncManager) createFc3Function(functionName string,
 	if err != nil {
 		return "", err
 	}
-	return *(resp.Body.HttpTrigger.UrlInternet), nil
+
+	return *resp.Body.HttpTrigger.UrlIntranet, nil
 }
 
 // fc3.0 get create function request
@@ -597,7 +608,6 @@ func (f *FuncManager) getCreateFuncRequestFc3(functionName string, env map[strin
 		EnvironmentVariables: env,
 		Handler:              utils.String("index.handler"),
 		CustomContainerConfig: &fc3.CustomContainerConfig{
-			Entrypoint:       []*string{utils.String("/docker/entrypoint.sh")},
 			AccelerationType: utils.String("Default"),
 			Image:            utils.String(config.ConfigGlobal.Image),
 			Port:             utils.Int32(config.ConfigGlobal.CAPort),
@@ -620,6 +630,16 @@ func (f *FuncManager) getCreateFuncRequestFc3(functionName string, env map[strin
 		}
 		if sd.CustomContainerConfig.Command != nil && len(sd.CustomContainerConfig.Command) > 0 {
 			input.CustomContainerConfig.Command = sd.CustomContainerConfig.Command
+		}
+		if sd.EnvironmentVariables != nil {
+			allEnv := make(map[string]*string)
+			for k, v := range sd.EnvironmentVariables {
+				allEnv[k] = v
+			}
+			for k, v := range input.EnvironmentVariables {
+				allEnv[k] = v
+			}
+			input.EnvironmentVariables = allEnv
 		}
 	}
 	return &fc3.CreateFunctionRequest{
@@ -644,6 +664,7 @@ func getHttpTriggerFc3() *fc3.CreateTriggerRequest {
 	triggerConfig := make(map[string]interface{})
 	triggerConfig["authType"] = config.AUTH_TYPE
 	triggerConfig["methods"] = []string{config.HTTP_GET, config.HTTP_POST, config.HTTP_PUT}
+	triggerConfig["disableURLInternet"] = true
 	byteConfig, _ := json.Marshal(triggerConfig)
 	input := &fc3.CreateTriggerInput{
 		TriggerName:   utils.String(config.TRIGGER_NAME),
