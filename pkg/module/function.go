@@ -541,8 +541,29 @@ func getCreateFuncRequest(functionName string, env map[string]*string) *fc.Creat
 }
 
 func (f *FuncManager) delFunction(functionNames []string) (fails []string, errs []string) {
+	func2Model := make(map[string]string)
+	funcs, err := f.funcStore.ListAll([]string{datastore.KModelServiceFunctionName})
+	if err == nil && funcs != nil {
+		for model, data := range funcs {
+			func2Model[data[datastore.KModelServiceFunctionName].(string)] = model
+		}
+	}
+
 	for _, functionName := range functionNames {
-		f.fcClient.DeleteTrigger(&config.ConfigGlobal.ServiceName, &functionName, utils.String(config.TRIGGER_NAME))
+		if modelName, exist := func2Model[functionName]; exist {
+			if err := f.funcStore.Delete(modelName); err != nil {
+				logrus.Warnf("%s delete fail, err: %s", functionName, err.Error())
+				fails = append(fails, functionName)
+				errs = append(errs, err.Error())
+			}
+		}
+
+		if _, err := f.fcClient.DeleteTrigger(&config.ConfigGlobal.ServiceName, &functionName, utils.String(config.TRIGGER_NAME)); err != nil {
+			logrus.Warnf("%s delete fail, err: %s", functionName, err.Error())
+			fails = append(fails, functionName)
+			errs = append(errs, err.Error())
+			continue
+		}
 		if _, err := f.fcClient.DeleteFunction(&config.ConfigGlobal.ServiceName, &functionName); err != nil {
 			logrus.Warnf("%s delete fail, err: %s", functionName, err.Error())
 			fails = append(fails, functionName)
@@ -649,7 +670,29 @@ func (f *FuncManager) getCreateFuncRequestFc3(functionName string, env map[strin
 
 // delete function
 func (f *FuncManager) delFunctionFC3(functionNames []string) (fails []string, errs []string) {
+	func2Model := make(map[string]string)
+	funcs, err := f.funcStore.ListAll([]string{datastore.KModelServiceFunctionName})
+	if err == nil && funcs != nil {
+		for model, data := range funcs {
+			func2Model[data[datastore.KModelServiceFunctionName].(string)] = model
+		}
+	}
+
 	for _, functionName := range functionNames {
+		if modelName, exist := func2Model[functionName]; exist {
+			if err := f.funcStore.Delete(modelName); err != nil {
+				logrus.Warnf("%s delete fail, err: %s", functionName, err.Error())
+				fails = append(fails, functionName)
+				errs = append(errs, err.Error())
+			}
+		}
+
+		if _, err := f.fc3Client.DeleteTrigger(&functionName, utils.String(config.TRIGGER_NAME)); err != nil {
+			logrus.Warnf("%s delete fail, err: %s", functionName, err.Error())
+			fails = append(fails, functionName)
+			errs = append(errs, err.Error())
+			continue
+		}
 		if _, err := f.fc3Client.DeleteFunction(&functionName); err != nil {
 			logrus.Warnf("%s delete fail, err: %s", functionName, err.Error())
 			fails = append(fails, functionName)
