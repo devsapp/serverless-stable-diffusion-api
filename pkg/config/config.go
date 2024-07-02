@@ -3,12 +3,13 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 var ConfigGlobal *Config
@@ -65,8 +66,9 @@ type ConfigYaml struct {
 	DisableHealthCheck string `yaml:"disableHealthCheck"`
 
 	// proxy or control or agent
-	ServerName string `yaml:"serverName"`
-	Downstream string `yaml:"downstream"`
+	ServerName  string `yaml:"serverName"`
+	Downstream  string `yaml:"downstream"`
+	UseIntranet bool   `yaml:"useIntranet"`
 }
 
 type ConfigEnv struct {
@@ -233,6 +235,13 @@ func (c *Config) updateFromEnv() {
 	if disableHealthCheck != "" {
 		c.DisableHealthCheck = disableHealthCheck
 	}
+
+	useIntranet := true
+	switch strings.ToLower(os.Getenv("USE_INTRANET")) {
+	case "", "false", "0":
+		useIntranet = false
+	}
+	c.UseIntranet = useIntranet
 }
 
 // check config valid
